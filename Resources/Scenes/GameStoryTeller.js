@@ -1,5 +1,5 @@
 import { Scene, SubScene } from "../Classes/UI.js";
-import { getUIInstance, getMapInstance, getPlayerInstance, getGameInstance } from "../Scripts/Shared.js";
+import { getUIInstance, getPlayerInstance, getGameInstance } from "../Scripts/Shared.js";
 import { log } from "../Classes/Game.js";
 import { SaveController } from "../Classes/Save.js";
 import { i18n } from "../Classes/I18n.js";

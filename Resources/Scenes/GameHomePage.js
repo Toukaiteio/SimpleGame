@@ -3,7 +3,6 @@ import { log } from "../Classes/Game.js";
 import {
   getUIInstance,
   getGameInstance,
-  getMapInstance,
   getPlayerInstance,
   setRandom,
 } from "../Scripts/Shared.js";

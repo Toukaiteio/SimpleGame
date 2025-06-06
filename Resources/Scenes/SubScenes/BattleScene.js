@@ -20,7 +20,6 @@ class BattleScene extends SubScene {
       // add next round button to defaultIntereactives here;
       this.hasRoadTo = [];
       this.battleLogs = [];
-      this.isRenderMap = false;
       this.isBattleEnd = false;
       this.noSafeText = true;
       this.defaultIntereactives = [document.createElement("br")];

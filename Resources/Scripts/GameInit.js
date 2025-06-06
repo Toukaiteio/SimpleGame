@@ -5,10 +5,8 @@ import { loadScenes } from "./ScenesLoader.js";
 import {
   setGameInstance,
   setUIInstance,
-  setMapInstance,
   setPlayerInstance,
 } from "./Shared.js";
-import { Map, generateMapData } from "../Classes/Map.js";
 import { subSceneList } from "../Scenes/GameStoryTeller.js";
 import { i18n } from "../Classes/I18n.js";
 // 获取游戏容器的DOM元素

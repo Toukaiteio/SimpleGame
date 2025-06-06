@@ -139,5 +139,14 @@
     "move_out_goCorrectPath":"<span hasDescription data-description-at='move_out_warning'>走你认为正确的路</span>",
     "move_out_goWrongPath":"<span hasDescription data-description-at='move_out_warning'>走你认为错误的路</span>",
     "hero_find_a_town_explore":"<span hasDescription data-description-at='ending_selection_warning'>探索城镇</span>",
-    "hero_find_a_town_check":"<span style='color:yellow;' hasDescription data-description-at='ending_selection_warning'>调查骚乱</span>"
+    "hero_find_a_town_check":"<span style='color:yellow;' hasDescription data-description-at='ending_selection_warning'>调查骚乱</span>",
+    "subscene_desc_ExampleScene": "这是一个示例场景，展示了如何构建游戏场景。",
+    "example_scene_initial_text": "欢迎来到示例场景。这里空空如也，但充满了可能性。",
+    "example_scene_event_name": "一个重要的抉择",
+    "example_scene_event_content": "你面前有两条路，你会选择哪一条？",
+    "example_scene_choice_1_text": "选择左边的路",
+    "example_scene_choice_1_feedback": "你选择了左边的路。一阵微风吹过。",
+    "example_scene_choice_2_text": "选择右边的路",
+    "example_scene_choice_2_feedback": "你选择了右边的路。远处传来了鸟鸣。",
+    "example_scene_continue_button": "继续"
 }

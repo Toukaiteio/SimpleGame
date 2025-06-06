@@ -1,7 +1,6 @@
 import {
   getUIInstance,
   getGameInstance,
-  getMapInstance,
   getPlayerInstance,
 } from "../Scripts/Shared.js";
 import { i18n } from "./I18n.js";
@@ -22,11 +21,6 @@ export class SubScene {
     this.isHiddenMoveButton = false;
     this.isAllowSave = true;
     this.isFinal = false;
-    /**
-     * 控制是否渲染地图
-     * @type {Boolean}
-     */
-    this.isRenderMap = false;
     this.textContent = ""; // 文本内容
     this.interactiveElements = []; // 交互内容（例如按钮）
   }
@@ -101,7 +95,6 @@ export class Scene {
   constructor(id) {
     this.id = id;
     this.hasRoadTo = [];
-    this.isRenderMap = false;
     /**
      * 场景内的组件列表
      * @type {Object<string, HTMLElement>}
@@ -198,12 +191,14 @@ export class Scene {
             const container = self.data.container;
             const scene = self.data.rederingScene;
             container.innerHTML = ""; // 清空容器
+            const fragment = document.createDocumentFragment();
             for (const componentId in scene.components) {
-              container.appendChild(scene.components[componentId]);
+              fragment.appendChild(scene.components[componentId]);
             }
             for (const road of scene.hasRoadTo) {
-              container.appendChild(scene.createMoveToComponent(road));
+              fragment.appendChild(scene.createMoveToComponent(road));
             }
+            container.appendChild(fragment);
           },
         }
       )
@@ -590,7 +585,7 @@ export class FastComponent {
    */
   static RadioGroup(title, choices, defaultIndex = 0, onChange = () => {}) {
     const wrapper = document.createElement("div");
-    wrapper.classList.add("radio-group");
+    wrapper.classList.add("radio-group", "card");
     const buttonWrapper = document.createElement("div");
     buttonWrapper.style.display = "flex";
     buttonWrapper.style.flexWrap = "wrap";
@@ -603,6 +598,7 @@ export class FastComponent {
 
     let selected = defaultIndex;
 
+    const buttonsFragment = document.createDocumentFragment();
     const buttons = choices.map((choice, i) => {
       const btn = document.createElement("button");
       btn.classList.add("primaryButton");
@@ -610,23 +606,28 @@ export class FastComponent {
       if (i === defaultIndex) btn.classList.add("active");
 
       btn.addEventListener("click", () => {
-        buttons.forEach(b => b.classList.remove("active"));
+        // Need to access buttons array for forEach, so map still needed for the array.
+        // Or, querySelectorAll on buttonWrapper if fragment wasn't used for buttons array.
+        buttonWrapper.querySelectorAll('.primaryButton').forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
 
         if (selected !== i) {
           if (choices[selected]?.onCancel) choices[selected].onCancel(wrapper);
           if (choice.onSelect) choice.onSelect(wrapper);
           selected = i;
+          wrapper.value = selected; // Update wrapper value
           onChange(i);
         }
       });
-      onChange(selected);
-      return btn;
+      // onChange(selected); // Call onChange initially or after loop
+      buttonsFragment.appendChild(btn);
+      return btn; // Still return btn to potentially build 'buttons' array if needed elsewhere, though direct DOM manipulation is via fragment
     });
+    onChange(selected); // Initial call
 
-    buttons.forEach(btn => buttonWrapper.appendChild(btn));
+    buttonWrapper.appendChild(buttonsFragment);
     wrapper.appendChild(buttonWrapper);
-    wrapper.value = selected;
+    wrapper.value = selected; // Ensure wrapper.value is set initially
     wrapper.setWarning = (msg) => {
       wrapper.title = msg;
     };
@@ -645,7 +646,7 @@ export class FastComponent {
    */
   static CheckboxGroup(title, desc, selections, defaultIndices = [], onChange = () => {}) {
     const wrapper = document.createElement("div");
-    wrapper.classList.add("checkbox-group");
+    wrapper.classList.add("checkbox-group", "card");
     wrapper.style.display = "flex";
     wrapper.style.flexWrap = "wrap";
     wrapper.style.justifyContent = "space-around";
@@ -662,12 +663,12 @@ export class FastComponent {
 
     const selected = new Set(defaultIndices);
 
+    const buttonsFragment = document.createDocumentFragment();
     const buttons = selections.map((choice, i) => {
       const btn = document.createElement("button");
       btn.classList.add("primaryButton");
       btn.textContent = choice.content;
       
-
       btn.addEventListener("click", () => {
         if (selected.has(i)) {
           selected.delete(i);
@@ -678,15 +679,23 @@ export class FastComponent {
           btn.classList.add("active");
           choice.onSelect?.(wrapper);
         }
+        wrapper.value = [...selected]; // Update wrapper value
         onChange([...selected]);
       });
-      if (selected.has(i)) btn.click();
-      return btn;
+      if (selected.has(i)) {
+        // Simulate click after element is in DOM or ensure active class is set
+         btn.classList.add("active"); // Set active class directly
+      }
+      buttonsFragment.appendChild(btn);
+      return btn; // Still return btn if array needed
     });
 
-    buttons.forEach(btn => wrapper.appendChild(btn));
+    wrapper.appendChild(buttonsFragment);
+    // Initial onChange call after all buttons potentially processed by `btn.click()` or class set
+    onChange([...selected]);
 
-    wrapper.value = [...selected];
+
+    wrapper.value = [...selected]; // Ensure wrapper.value is set initially
     wrapper.setWarning = (msg) => {
       wrapper.title = msg;
     };
@@ -707,7 +716,7 @@ export class FastComponent {
    */
   static RangedSlide(title, desc, min = 0, max = 100, step = 1, defaultVal = 15, onChange = () => {}) {
     const wrapper = document.createElement("div");
-
+    wrapper.classList.add("card");
     const titleEl = document.createElement("div");
     titleEl.classList.add("primaryTitle");
     titleEl.textContent = title;
@@ -773,7 +782,7 @@ export class FastComponent {
    */
   static TextInput(title, desc, label, placeholder, defaultVal = "", onChange = () => {}) {
     const wrapper = document.createElement("div");
-    wrapper.classList.add("text-input");
+    wrapper.classList.add("text-input", "card");
     if(title != null) {
       const titleEl = document.createElement("div");
       titleEl.classList.add("primaryTitle");
@@ -836,7 +845,7 @@ export class FastComponent {
    */
   static DropMenu(title, desc, items, defaultVal = "", onChange = () => {}) {
     const wrapper = document.createElement("div");
-
+    wrapper.classList.add("card");
     const titleEl = document.createElement("div");
     titleEl.classList.add("primaryTitle");
     titleEl.textContent = title;
