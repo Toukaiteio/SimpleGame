@@ -18,7 +18,7 @@ class I18n {
    */
   async loadLanguage(language) {
     try {
-      const response = await fetch(`../Resources/I18n/${language}.json`);
+      const response = await fetch(`./Resources/I18n/${language}.json`);
       if (!response.ok) {
         throw new Error(`Failed to load language file: ${language}`);
       }

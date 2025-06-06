@@ -37,6 +37,19 @@
     
     "part_hand":"手部",
 
+    "option_game_mode_select":"选择游戏模式",
+    "game_mode_normal":"普通",
+    "option_gender_select":"选择性别",
+    "option_gender_select_male":"男",
+    "option_gender_select_female":"女",
+    "option_gender_select_futanari":"扶她",
+    "game_mode_place_holder":"Coming Soon..",
+    "option_general_setting":"其他设定",
+    "option_general_setting_name":"设定角色与存档名",
+    "option_general_setting_name_saveName":"存档名",
+    "option_general_setting_name_characterName":"角色名",
+    
+
     "info_skill_cooling_remain":"(冷却中:剩余<%CoolingDownRoundsRemain%>回合)",
     "info_status_exp":"经验",
     "info_status_coin":"金币",
@@ -46,6 +59,8 @@
 
     "info_error_message_save_not_allowed":"当前还不可以存档！",
     "info_message_successfully_saved":"已保存在档案 <%SaveName%>！",
+    "info_warning_message_not_fulfilled":"请完成所有步骤！",
+    "info_warning_message_gender_offset_increased":"你穿上了一件与你性别不符的衣服！",
 
     "battle_func_next_round":"下一回合",
     "battle_func_leave":"离开",
@@ -69,21 +84,36 @@
     "item_berry_name":"<span class='itemName' hasDescription data-description='<#item_berry_desc#>'>莓果</span>",
     "item_berry_desc":"可以食用，能够恢复<b> 5 </b>点生命值",
 
+    "item_school_uniform_upper_female_name":"<span hasDescription data-description='<#item_school_uniform_upper_female_desc#>'>校服上衣(女式)</span>",
+    "item_school_uniform_upper_female_desc":"给女性准备的学生制服的上衣,似乎被一些特殊的人喜欢",
+    "item_school_uniform_lower_female_name":"<span hasDescription data-description='<#item_school_uniform_lower_female_desc#>'>校服裙子</span>",
+    "item_school_uniform_lower_female_desc":"给女性准备的学生制服的裙子,似乎被一些特殊的人喜欢",
+    "item_underwear_upper_female_name":"<span hasDescription data-description='<#item_underwear_upper_female_desc#>'>女士上身内衣</span>",
+    "item_underwear_upper_female_desc":"一般的女士上身的内衣",
+    "item_underwear_lower_female_name":"<span hasDescription data-description='<#item_underwear_lower_female_desc#>'>女士下身内衣</span>",
+    "item_underwear_lower_female_desc":"一般的女士下身的内衣",
+    "item_school_uniform_upper_male_name":"<span hasDescription data-description='<#item_school_uniform_upper_male_desc#>'>校服上衣(男式)</span>",
+    "item_school_uniform_upper_male_desc":"给男性准备的学生制服的上衣",
+    "item_school_uniform_lower_male_name":"<span hasDescription data-description='<#item_school_uniform_lower_male_desc#>'>校服裤子</span>",
+    "item_school_uniform_lower_male_desc":"给男性准备的学生制服的裤子",
+    "item_underwear_lower_male_name":"<span hasDescription data-description='<#item_underwear_lower_male_desc#>'>男士下身内衣</span>",
+    "item_underwear_lower_male_desc":"一半的男性下身的内衣",
+
     "story_func_continue":"继续",
 
     "BerryForest":"<span hasDescription data-description='<#subscene_desc_BerryForest#>'>浆果森林</span>",
-    "KingdomPalace":"<span hasDescription data-description='<#subscene_desc_KingdomPalace#>'>王国宫殿</span>",
+    "KingdomPalace":"<span>前言</span>",
     "BareGround":"<span hasDescription data-description='<#subscene_desc_BareGround#>'>一片荒地</span>",
     "MiddleTown":"<span hasDescription data-description='<#subscene_desc_MiddleTown#>'>一座城镇</span>",
 
-    "subscene_desc_KingdomPalace":"一座古老的城堡，一位面色沉重的老者坐在中央。\n",
+    "subscene_desc_KingdomPalace":"倘若你不想被卷入麻烦，那么请牢记要穿着得体，并待在安全、明亮的地方。夜晚是非常危险的，尤其当你身穿色情下流的服饰时，那将引起某些人的注意——而这究竟会给你带来好运还是霉头，谁知道呢？\n\n新的学年将于明天09:00开始。\n巴士是这个小镇里最便捷的交通方式，上学的时候别忘记背好书包穿好校服！\n\n你可以通过完成npc交给你的任务获得意想不到的收获!\n",
     "subscene_desc_BerryForest":"这里有许多的浆果，看上去很美丽。\n",
     "subscene_desc_BareGround":"一片什么都没有的荒地。\n",
     "subscene_desc_MiddleTown":"一座城镇，来来往往的有很多人。\n",
     "KingdomPalace_hero_come_back_without_the_princess":"看到<#info_hero#>，王国宫殿一时间沸腾了，结果<#info_hero#>并没有带着公主回来。国王很愤怒并把<#info_hero#>驱逐出了宫殿\n",
 
-    "ingame_event_hero_start_adventure":"<b><#info_hero#>启程</b>\n",
-    "ingame_event_hero_start_adventure_log_1":"时隔七百三十代<#info_hero#>，王国的公主再次被恶龙抓走，为拯救公主，国王召来了身为<#info_hero#>第七百三十二代传人的你去拯救<#info_hero#>，你怀着荣耀与骄傲带着初代<#info_hero#>的装备踏上了拯救公主的路途。\n",
+    "ingame_event_story_begin":"<b>开始故事</b>\n",
+    "ingame_event_story_begin_log_1":"\n",
     "ingame_event_hero_go_first_action":"<b><#info_hero#>首次亮相</b>\n",
     "ingame_event_hero_go_first_action_log_1":"出了城堡，<#info_hero#>开始了他的第一次抉择。出来后<#info_hero#>才发现自己没有带地图，也没有人告诉他要去哪里。\n",
     "ingame_event_hero_got_kicked_off":"<b><#info_hero#>被踢出城堡</b>\n",
@@ -99,7 +129,7 @@
     "ending_selection_warning":"<span style=\"color:#FF0000;font-weight:bold;\">该选项会产生深远影响!</span>",
     "important_npc_dead_warning":"你忽然一阵恍惚，不知哪里传来的声音告诉你：<span style='color:#FF0000;'>一位游戏的主要角色死亡了！</span>",
 
-    "hero_start_adventure_ready":"<span hasDescription data-description-at='move_out_warning'>出发！</span>",
+    "story_begin_ready":"<span hasDescription data-description-at='move_out_warning'>确定</span>",
     "hero_do_first_action_goBackPalace":"<span hasDescription data-description-at='move_out_warning'>回到城堡</span>",
     "hero_do_first_action_goCorrectPath":"<span hasDescription data-description-at='move_out_warning'>走你认为正确的路</span>",
     "hero_do_first_action_goWrongPath":"<span hasDescription data-description-at='move_out_warning'>走你认为错误的路</span>",

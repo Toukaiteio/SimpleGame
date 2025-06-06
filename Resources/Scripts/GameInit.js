@@ -64,6 +64,6 @@ i18n.loadLanguage("cn").then(() => {
       ui.getScene("GameStoryTeller").subScenes[i] = new subSceneList[i]();
     }
     // 显示游戏主页场景
-    ui.displayScene("BeforeStart");
+    ui.displayScene("GameHomePage");
   });
 });

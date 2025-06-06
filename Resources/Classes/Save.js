@@ -16,6 +16,7 @@ export class Save {
     this.player = player;
     this.location = location;
     this.hookList = hookList;
+    this.gameSettings = getGameInstance().gameSettings;
     this.saveName = i18n.t("default_save")
   }
   save() {
@@ -24,6 +25,7 @@ export class Save {
       player: this.player,
       location: this.location,
       saveName: this.saveName,
+      gameSettings: this.gameSettings,
     };
     localStorage.setItem("game-local-saves", JSON.stringify(oSaveSlots));
   }
@@ -52,6 +54,7 @@ export class SaveController {
             self.data.player
             .applySelfJson(runningSave.player)
             .addHook("after", () => {
+              getGameInstance().gameSettings = runningSave.gameSettings;
               setRandom(new SeededRandom(SeededRandom.getRandom()));
               
               ui.displayScene("GameStoryTeller");

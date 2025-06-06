@@ -283,6 +283,27 @@ export class Game {
      * @type {Object<string, Object<string, Object<string,Function | number>>>}
      */
     this.tempGlobalTriggers = {};
+    /**
+     * 记录游戏全局的设置。
+     * @type {Object<string, string | boolean | number | null>}
+     */
+    this.gameSettings = {};
+  }
+  /**
+   * 设置一个全局设置
+   * @param {string} key - 要插入的事件对象
+   * @param {string | boolean | number | null} value - 值
+   */
+  setGameSetting(key, value) {
+    this.gameSettings[key] = value;
+  }
+  /**
+   * 获取一个全局设置
+   * @param {string} key - 要插入的事件对象
+   * @returns {string | boolean | number | null}
+   */
+  getGameSetting(key) {
+    return this.gameSettings[key] ?? null;
   }
   /**
    * 插入一个新事件
@@ -595,7 +616,7 @@ export function log(...logText) {
   // 第二行是调用 log 函数的位置信息（栈的第一行是错误消息本身）
   const callerInfo = stackLines[2].trim();
   let outsideBrackets = callerInfo.split(" (")[0].replace("at ", ""); // 提取括号外的部分
-  const insideBrackets = callerInfo.match(/\/(\w+\.js:\d+:\d+)/)[1]; // 提取括号内的部分
+  const insideBrackets = callerInfo.match(/\/([^\/]+\.js:\d+:\d+)/)[1]; // 提取括号内的部分
   if (outsideBrackets.indexOf("/") !== -1)
     outsideBrackets = insideBrackets.split(":")[0];
   // 格式化输出日志

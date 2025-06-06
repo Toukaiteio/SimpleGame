@@ -1,4 +1,4 @@
-import { Scene } from "../Classes/UI.js";
+import { Animations, FastComponent, Scene } from "../Classes/UI.js";
 import { log } from "../Classes/Game.js";
 import {
   getUIInstance,
@@ -26,25 +26,104 @@ class GameHomePage extends Scene {
   constructor() {
     super("GameHomePage"); // 调用父类的构造函数，设置场景ID
     // 创建“开始游戏”按钮
-    this.createButton("startGame", () => {
-      this.startGame();
-      audioManager.playBGM("Game Over Zyanaimon");
-    });
+    this.addComponent(
+      "GameMode",
+      FastComponent.RadioGroup(i18n.t("option_game_mode_select"), [
+        {
+          content: i18n.t("game_mode_normal"),
+          onSelect: (self) => {
+            game.setGameSetting("mode", "normal");
+          },
+        },
+        {
+          content: i18n.t("game_mode_place_holder"),
+          onSelect: (self) => {
+            game.setGameSetting("mode", null);
+          },
+        },
+      ])
+    );
+    this.addComponent(
+      "SelectGender",
+      FastComponent.RadioGroup(i18n.t("option_gender_select"), [
+        {
+          content: i18n.t("option_gender_select_male"),
+          onSelect: (self) => {
+            game.setGameSetting("gender", 1);
+          },
+        },
+        {
+          content: i18n.t("option_gender_select_female"),
+          onSelect: (self) => {
+            game.setGameSetting("gender", 0);
+          },
+        },
+        {
+          content: i18n.t("option_gender_select_futanari"),
+          onSelect: (self) => {
+            game.setGameSetting("gender", -1);
+          },
+        },
+      ])
+    );
+    this.addComponent(
+      "SaveName",
+      FastComponent.TextInput(
+        i18n.t("option_general_setting"),
+        i18n.t("option_general_setting_name"),
+        i18n.t("option_general_setting_name_saveName"),
+        i18n.t("option_general_setting_name_saveName"),
+        "",
+        (text) => {
+          game.setGameSetting("saveName", text);
+        }
+      )
+    );
+    this.addComponent(
+      "CharacterName",
+      FastComponent.TextInput(
+        null,
+        null,
+        i18n.t("option_general_setting_name_characterName"),
+        i18n.t("option_general_setting_name_characterName"),
+        "",
+        (text) => {
+          game.setGameSetting("characterName", text);
+        }
+      )
+    );
     this.saves = SaveController.getSaveSlots();
+    this.createButton("startGame", () => {
+      if (
+        game.getGameSetting("saveName") &&
+        game.getGameSetting("characterName") &&
+        game.getGameSetting("mode") &&
+        game.getGameSetting("gender") != null
+      )
+        this.startGame();
+      else {
+        console.log(game.gameSettings);
+        Animations.displayMessage(
+          "warning",
+          i18n.t("info_warning_message_not_fulfilled")
+        );
+      }
+      // audioManager.playBGM("Game Over Zyanaimon");
+    });
     // 创建“读取存档”按钮
-    if (Object.keys(this.saves).length > 0) {
-      this.createButton("loadGame", () => {
-        this.loadGame();
-      });
-    }
+    // if (Object.keys(this.saves).length > 0) {
+    //   this.createButton("loadGame", () => {
+    //     this.loadGame();
+    //   });
+    // }
 
     // 创建“设置”按钮
-    this.createButton("settings", () => {
-      this.showSettings();
-    });
+    // this.createButton("settings", () => {
+    //   this.showSettings();
+    // });
   }
   render(container) {
-    audioManager.playBGM("Ohirusugi");
+    // audioManager.playBGM("Ohirusugi");
     super.render(container);
   }
   /**

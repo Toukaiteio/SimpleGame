@@ -475,15 +475,17 @@ export class Player extends Monster {
     super(status, "Player", void 0, true);
     this._status = Object.assign(this._status,{
       maxHp: status.maxHp || 75,
-      strength: status.strength || 3,
-      intelligence: status.intelligence || 2,
-      charm: status.charm || 2,
+      strength: status.strength || 5,
+      intelligence: status.intelligence || 10,
+      charm: status.charm || 45,
       luck: status.luck || 2,
-      cognition: status.cognition || 2,
-      energy: status.energy || 2,
+      cognition: status.cognition || 100,
+      maxCognition: status.maxCognition || 100,
+      energy: status.energy || 100,
+      maxEnergy: status.maxEnergy || 100,
       buffList: [],
     });
-
+    this.isMonster = false;
     this._status.hp = this._status.maxHp;
     this._status.level = 1;
     this._status.currentExp = 0;

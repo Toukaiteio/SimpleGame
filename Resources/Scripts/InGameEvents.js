@@ -8,6 +8,7 @@ import {
 } from "./Shared.js";
 import { Animations } from "../Classes/UI.js";
 import { SeededRandom } from "../Classes/Random.js";
+import { Battle } from "../Classes/Battle.js";
 const writeH = Animations.writeWithHTML;
 export class InGameEvents {
   static instance = null;
@@ -17,7 +18,7 @@ export class InGameEvents {
     }
     return InGameEvents.instance;
   }
-  static allowEnteringSubscene = ["BerryForest", "BareGround","MiddleTown"];
+  static allowEnteringSubscene = ["BerryForest", "BareGround", "MiddleTown"];
   static randomChoose(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
   }
@@ -26,31 +27,29 @@ export class InGameEvents {
       /** @type {Player} */
       const player = getPlayerInstance();
       player.moveTo(
-        "#" +
-          InGameEvents.randomChoose(InGameEvents.allowEnteringSubscene)
+        "#" + InGameEvents.randomChoose(InGameEvents.allowEnteringSubscene)
       );
     };
     const move_out_wrongly = () => {
       /** @type {Player} */
       const player = getPlayerInstance();
       player.moveTo(
-        "#" +
-          InGameEvents.randomChoose(InGameEvents.allowEnteringSubscene)
+        "#" + InGameEvents.randomChoose(InGameEvents.allowEnteringSubscene)
       );
-    }
+    };
     this._events = {
-      hero_start_adventure: [
-        "hero_go_for_princess",
+      story_begin: [
+        "story_begin",
         {
           ready() {
             /** @type {Player} */
             const player = getPlayerInstance();
-            player
-              .moveTo("#BerryForest")
-              .addHook("after", async (self, game) => {
-                player.giveItem("broken_hero_sword");
-                getPlayerInstance().addFlag("has_leaved_palace", true);
-              });
+            getPlayerInstance().addFlag(
+              "has_leaved_palace",
+              true
+            );
+            player.moveTo("#BerryForest");
+
           },
         },
         (key) => {
@@ -58,19 +57,19 @@ export class InGameEvents {
             case "name":
               writeH(
                 getStoryTellerElement(),
-                i18n.t("ingame_event_hero_start_adventure")
+                i18n.t("ingame_event_story_begin")
               );
               return null;
             case "content":
               writeH(
                 getStoryTellerElement(),
-                i18n.t("ingame_event_hero_start_adventure_log_1")
+                i18n.t("ingame_event_story_begin_log_1")
               );
               return null;
             case "event_end":
               return null;
             default:
-              return "hero_start_adventure_" + key;
+              return "story_begin_" + key;
           }
         },
       ],
@@ -86,8 +85,14 @@ export class InGameEvents {
                 getPlayerInstance().addFlag("back_palace_at_just_begin", true);
               });
           },
-          goCorrectPath:() =>{getPlayerInstance().addFlag("has_done_all_begin_dialog",true);move_out_correctly();},
-          goWrongPath:() =>{getPlayerInstance().addFlag("has_done_all_begin_dialog",true);move_out_wrongly();},
+          goCorrectPath: () => {
+            getPlayerInstance().addFlag("has_done_all_begin_dialog", true);
+            move_out_correctly();
+          },
+          goWrongPath: () => {
+            getPlayerInstance().addFlag("has_done_all_begin_dialog", true);
+            move_out_wrongly();
+          },
         },
         (key) => {
           switch (key) {
@@ -113,8 +118,14 @@ export class InGameEvents {
       hero_do_second_action: [
         "hero_do_first_action",
         {
-          goCorrectPath:() =>{getPlayerInstance().addFlag("has_done_all_begin_dialog",true);move_out_correctly();},
-          goWrongPath:() =>{getPlayerInstance().addFlag("has_done_all_begin_dialog",true);move_out_wrongly();},
+          goCorrectPath: () => {
+            getPlayerInstance().addFlag("has_done_all_begin_dialog", true);
+            move_out_correctly();
+          },
+          goWrongPath: () => {
+            getPlayerInstance().addFlag("has_done_all_begin_dialog", true);
+            move_out_wrongly();
+          },
         },
         (key) => {
           switch (key) {
@@ -164,7 +175,7 @@ export class InGameEvents {
           }
         },
       ],
-      hero_find_a_town:[
+      hero_find_a_town: [
         "hero_find_a_town",
         {
           explore() {
@@ -173,14 +184,20 @@ export class InGameEvents {
             player
               .modifyAttribute(player._status.charm - 99, "charm")
               .addHook("after", async (self, game) => {
-                writeH(getStoryTellerElement(), i18n.f("status_decline_info",{
-                  StatusName: i18n.t("status_charm"),
-                  Count: self.data.current - self.data.value,
-                }));
+                writeH(
+                  getStoryTellerElement(),
+                  i18n.f("status_decline_info", {
+                    StatusName: i18n.t("status_charm"),
+                    Count: self.data.current - self.data.value,
+                  })
+                );
               });
-            player.setFlag("player_saved_lona",false);
-            player.setFlag("npc_lona_dead",true);
-            writeH(getStoryTellerElement(), i18n.t("important_npc_dead_warning"));
+            player.setFlag("player_saved_lona", false);
+            player.setFlag("npc_lona_dead", true);
+            writeH(
+              getStoryTellerElement(),
+              i18n.t("important_npc_dead_warning")
+            );
           },
           check() {
             /** @type {Player} */
@@ -188,15 +205,18 @@ export class InGameEvents {
             player
               .modifyAttribute(player._status.charm + 2, "charm")
               .addHook("after", async (self, game) => {
-                writeH(getStoryTellerElement(), i18n.f("status_up_info",{
-                  StatusName: i18n.t("status_charm"),
-                  Count:self.data.value - self.data.current,
-                }));
+                writeH(
+                  getStoryTellerElement(),
+                  i18n.f("status_up_info", {
+                    StatusName: i18n.t("status_charm"),
+                    Count: self.data.value - self.data.current,
+                  })
+                );
               });
-            player.setFlag("player_saved_lona",true);
-            player.setFlag("lona_likability",15);
+            player.setFlag("player_saved_lona", true);
+            player.setFlag("lona_likability", 15);
             // 触发下一个事件 hero_save_lona
-          }
+          },
         },
         (key) => {
           switch (key) {
@@ -217,23 +237,23 @@ export class InGameEvents {
           }
         },
       ],
-      hero_save_lona:[
+      hero_save_lona: [
         "hero_save_lona",
         {
           fight() {
             /** @type {Player} */
             const player = getPlayerInstance();
-            
+            const next = new Battle();
             // Create A fight
           },
           talk() {
             /** @type {Player} */
             const player = getPlayerInstance();
-            
+
             // Do a charm judge
-          }
-        }
-      ]
+          },
+        },
+      ],
     };
     this.events = {
       hero_find_free_money: [
@@ -260,10 +280,13 @@ export class InGameEvents {
               player
                 .modifyAttribute(player._status.charm + 1, "charm")
                 .addHook("after", async (self, game) => {
-                  writeH(getStoryTellerElement(), i18n.f("status_up_info",{
-                    StatusName: i18n.t("status_charm"),
-                    Count: self.data.value - self.data.current,
-                  }));
+                  writeH(
+                    getStoryTellerElement(),
+                    i18n.f("status_up_info", {
+                      StatusName: i18n.t("status_charm"),
+                      Count: self.data.value - self.data.current,
+                    })
+                  );
                 });
               player.setFlag("leave_the_free_money", 0);
             }
@@ -297,13 +320,12 @@ export class InGameEvents {
           }
         },
       ],
-
     };
     this.move_out_event = [
       "move_out",
       {
-        goCorrectPath:move_out_correctly,
-        goWrongPath:move_out_wrongly,
+        goCorrectPath: move_out_correctly,
+        goWrongPath: move_out_wrongly,
       },
       (key) => {
         switch (key) {
@@ -330,20 +352,20 @@ export class InGameEvents {
   }
   starter_event_trigger(event_name) {
     if (this._events[event_name]) {
-      return getGameInstance().insertEvent(
-        new InGameEvent(...this._events[event_name])
-      ).addHook("after",(self,game) =>{
-        getGameInstance().allowSave = false;
-      });
+      return getGameInstance()
+        .insertEvent(new InGameEvent(...this._events[event_name]))
+        .addHook("after", (self, game) => {
+          getGameInstance().allowSave = false;
+        });
     }
   }
-  trigger(event_name,chance = 100) {
+  trigger(event_name, chance = 100) {
     if (this.events[event_name] && SeededRandom.randomProbability(chance)) {
-      return getGameInstance().insertEvent(
-        new InGameEvent(...this.events[event_name])
-      ).addHook("after",(self,game) =>{
-        getGameInstance().allowSave = false;
-      });
+      return getGameInstance()
+        .insertEvent(new InGameEvent(...this.events[event_name]))
+        .addHook("after", (self, game) => {
+          getGameInstance().allowSave = false;
+        });
     }
   }
   trigger_move_out_event() {
