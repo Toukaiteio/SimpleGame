@@ -1,0 +1,5 @@
+stories/
+stages/
+test.html
+*.config.js
+node_modules/
