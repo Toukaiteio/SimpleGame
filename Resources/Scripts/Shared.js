@@ -1,166 +1,186 @@
 // Resources/Scripts/Shared.js
 
 /**
- * 用于在模块间共享的 `Game` 实例
- * @type {Game|null}
+ * 简易 IOC 容器实现
  */
-let gameInstance = null;
+class IoCContainer {
+  constructor() {
+    this._registry = new Map();
+    this._singletons = new Map();
+  }
+
+  /**
+   * 注册一个依赖项
+   * @param {string} name - 依赖名
+   * @param {Function|any} resolver - 工厂函数或直接值
+   * @param {'singleton'|'factory'|'value'} [type='singleton']
+   */
+  register(name, resolver, type = "singleton") {
+    if (this._registry.has(name)) {
+      console.warn(`Dependency "${name}" already registered.`);
+    }
+    this._registry.set(name, { resolver, type });
+  }
+
+  /**
+   * 获取依赖实例
+   * @param {string} name
+   */
+  resolve(name) {
+    const dep = this._registry.get(name);
+    if (!dep) {
+      throw new Error(
+        `Dependency "${name}" not found. Please register it first.`
+      );
+    }
+
+    switch (dep.type) {
+      case "singleton":
+        if (!this._singletons.has(name)) {
+          this._singletons.set(name, dep.resolver(this));
+        }
+        return this._singletons.get(name);
+
+      case "factory":
+        return dep.resolver(this);
+
+      case "value":
+        return dep.resolver;
+
+      default:
+        throw new Error(`Unknown dependency type: ${dep.type}`);
+    }
+  }
+
+  /**
+   * 检查是否已注册某个依赖
+   * @param {string} name
+   */
+  has(name) {
+    return this._registry.has(name);
+  }
+
+  /**
+   * 清除所有依赖（用于重置容器）
+   */
+  reset() {
+    this._singletons.clear();
+    this._registry.clear();
+  }
+}
+
+// 创建全局容器实例
+export const container = new IoCContainer();
+
+// 将常用依赖注册为别名函数，保持原有使用方式一致
 
 /**
- * 用于在模块间共享的 `UI` 实例
- * @type {UI|null}
- */
-let uiInstance = null;
-
-/**
- * 用于在模块间共享的 `Player` 实例
- * @type {Player|null}
- */
-let playerInstance = null;
-
-
-
-/**
- * 用于在模块间共享的 `Map` 实例
- * @type {Object | null}
- */
-let mapInstance = null;
-
-/**
- * 用于在模块间共享的 `Item` 实例
- * @type {Item | null}
- */
-let gameItems = {};
-
-/**
- * 设置共享的 `Game` 实例。
- * 在初始化 `Game` 类后调用该函数将实例存储在此模块中，以便其他模块可以访问。
- *
- * @param {Game} game - 需要共享的 `Game` 类实例。
+ * 设置共享的 Game 实例
+ * @param {Game} game
  */
 export function setGameInstance(game) {
-  gameInstance = game;
+  container.register("Game", () => game, "value");
 }
 
 /**
- * 获取共享的 `Game` 实例。
- * 该函数返回存储的 `Game` 实例，以便其他模块可以访问和使用它。
- *
- * @returns {Game|null} - 返回 `Game` 类的实例，如果未设置则返回 `null`。
+ * 获取共享的 Game 实例
+ * @returns {Game|null}
  */
 export function getGameInstance() {
-  return gameInstance;
+  try {
+    return container.resolve("Game")();
+  } catch (e) {
+    return null;
+  }
 }
 
 /**
- * 设置共享的 `Player` 实例。
- * 在初始化 `Player` 类后调用该函数将实例存储在此模块中，以便其他模块可以访问。
- *
- * @param {Player} player - 需要共享的 `Player` 类实例。
+ * 设置共享的 Player 实例
+ * @param {Player} player
  */
 export function setPlayerInstance(player) {
-  playerInstance = player;
+  container.register("Player", () => player, "value");
 }
 
 /**
- * 获取共享的 `Player` 实例。
- * 该函数返回存储的 `Player` 实例，以便其他模块可以访问和使用它。
- *
- * @returns {Player|null} - 返回 `Player` 类的实例，如果未设置则返回 `null`。
+ * 获取共享的 Player 实例
+ * @returns {Player|null}
  */
 export function getPlayerInstance() {
-  return playerInstance;
-}
-
-/**
- * 设置共享的 `Map` 实例。
- * 在初始化 `Map` 类后调用该函数将实例存储在此模块中，以便其他模块可以访问。
- *
- * @param {Map} map - 需要共享的 `Map` 类实例。
- * @param {SVGAElement} mapElement - 需要共享的 `Map` 元素。
- */
-export function setMapInstance(map, mapElement) {
-  mapInstance = { map: map, mapElement: mapElement };
-}
-
-/**
- * 获取共享的 `Map` 实例。
- * 该函数返回存储的 `Map` 实例，以便其他模块可以访问和使用它。
- *
- * @returns {Map|null} - 返回 `Map` 类的实例，如果未设置则返回 `null`。
- */
-export function getMapInstance() {
-  return mapInstance;
-}
-
-/**
- * 设置共享的 `Item` 实例。
- * 在初始化 `Item` 类后调用该函数将实例存储在此模块中，以便其他模块可以访问。
- *
- * @param {string} name - 物品ID
- * @param {Item} item - 物品实例
- */
-export function addGameItem(name, item) {
-    gameItems[name] = item;
+  try {
+    return container.resolve("Player")();
+  } catch (e) {
+    return null;
   }
-  
-  /**
-   * 获取共享的 `Item` 实例。
-   * 该函数返回存储的 `Item` 实例，以便其他模块可以访问和使用它。
-   *
-   * @returns {Object} - 返回所有储存的 `Item` 类的实例，如果未设置则返回 `null`。
-   */
-  export function getGameItems() {
-    return gameItems;
-  }
+}
 
 /**
- * 设置共享的 `UI` 实例。
- * 在初始化 `UI` 类后调用该函数将实例存储在此模块中，以便其他模块可以访问。
- *
- * @param {UI} ui - 需要共享的 `UI` 类实例。
+ * 设置共享的 UI 实例
+ * @param {UI} ui
  */
 export function setUIInstance(ui) {
-  uiInstance = ui;
+  container.register("UI", () => ui, "value");
 }
 
 /**
- * 获取共享的 `UI` 实例。
- * 该函数返回存储的 `UI` 实例，以便其他模块可以访问和使用它。
- *
- * @returns {UI|null} - 返回 `UI` 类的实例，如果未设置则返回 `null`。
+ * 获取共享的 UI 实例
+ * @returns {UI|null}
  */
 export function getUIInstance() {
-  return uiInstance;
+  try {
+    return container.resolve("UI")();
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * 设置共享的 Map 实例
+ * @param {Map} map
+ * @param {SVGAElement} mapElement
+ */
+export function setMapInstance(map, mapElement) {
+  container.register("Map", () => ({ map, mapElement }), "value");
+}
+
+/**
+ * 获取共享的 Map 实例
+ * @returns {{map: Map, mapElement: SVGAElement}|null}
+ */
+export function getMapInstance() {
+  try {
+    return container.resolve("Map")();
+  } catch (e) {
+    return null;
+  }
 }
 
 let _getRandom = null;
-export function setRandom(random){
+export function setRandom(random) {
   _getRandom = random;
 }
-export function getRandom(){
+export function getRandom() {
   return _getRandom;
 }
 
-let _storyTeller = document.createElement("div");
+const _storyTeller = document.createElement("div");
 _storyTeller.id = "BeginningStory";
-export function getStoryTellerElement(){
+export function getStoryTellerElement() {
   return _storyTeller;
 }
+
 export const shared_store = {};
-export function store(key,value){
+export function store(key, value) {
   shared_store[key] = value;
-};
-export function getStore(key){
+}
+export function getStore(key) {
   return shared_store[key] || null;
 }
 
-const item_list = {
-
-};
-export function addToItemList(item_id,item_data){
+const item_list = {};
+export function addToItemList(item_id, item_data) {
   item_list[item_id] = item_data;
 }
-export function getItemList(){
+export function getItemList() {
   return item_list;
 }
