@@ -1,6 +1,6 @@
 import { i18n } from "../../Classes/I18n.js";
 import { Item } from "../../Classes/Item.js";
-import { Animations } from "../../Classes/UI.js";
+import { Animations } from "../../Classes/Animations.js";
 import { ItemBuffs } from "../Buffs/Items.js";
 import { getGameInstance, getPlayerInstance } from "../Shared.js";
 export class berry extends Item {

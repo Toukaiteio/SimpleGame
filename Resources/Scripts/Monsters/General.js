@@ -1,5 +1,5 @@
 import { i18n } from "../../Classes/I18n.js";
-import { Monster } from "../../Classes/Player.js";
+import { Monster } from "../../Classes/Monster.js";
 import { Slime_slime } from "../Items/Index.js";
 import { getUIInstance,getRandom } from "../Shared.js";
 export class Slime extends Monster {

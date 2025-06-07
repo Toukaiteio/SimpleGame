@@ -1,3 +1,5 @@
+import { i18n } from "./I18n.js"; // Added for the new dialog method
+
 export class FastComponent {
   /**
    * 创建一个按钮样式的单选框组
@@ -30,8 +32,6 @@ export class FastComponent {
       if (i === defaultIndex) btn.classList.add("active");
 
       btn.addEventListener("click", () => {
-        // Need to access buttons array for forEach, so map still needed for the array.
-        // Or, querySelectorAll on buttonWrapper if fragment wasn't used for buttons array.
         buttonWrapper.querySelectorAll('.primaryButton').forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
 
@@ -39,25 +39,23 @@ export class FastComponent {
           if (choices[selected]?.onCancel) choices[selected].onCancel(wrapper);
           if (choice.onSelect) choice.onSelect(wrapper);
           selected = i;
-          wrapper.value = selected; // Update wrapper value
+          wrapper.value = selected;
           onChange(i);
         }
       });
-      // onChange(selected); // Call onChange initially or after loop
       buttonsFragment.appendChild(btn);
-      return btn; // Still return btn to potentially build 'buttons' array if needed elsewhere, though direct DOM manipulation is via fragment
+      return btn;
     });
     
-    // Trigger onSelect for default selection
     if (choices[defaultIndex]?.onSelect && defaultIndex >= 0 && defaultIndex < choices.length) {
       choices[defaultIndex].onSelect(wrapper);
     }
     
-    onChange(selected); // Initial call
+    onChange(selected);
 
     buttonWrapper.appendChild(buttonsFragment);
     wrapper.appendChild(buttonWrapper);
-    wrapper.value = selected; // Ensure wrapper.value is set initially
+    wrapper.value = selected;
     wrapper.setWarning = (msg) => {
       wrapper.title = msg;
     };
@@ -65,15 +63,6 @@ export class FastComponent {
     return wrapper;
   }
 
-  /**
-   * 创建一个按钮样式的多选框组
-   * @param {string} title 标题
-   * @param {string} desc 描述
-   * @param {Array<{content: string, onSelect: function(FastComponent): void, onCancel: function(FastComponent): void}>} selections 选项数组
-   * @param {Array<number>} [defaultIndices=[]] 默认选中项索引数组
-   * @param {function(Array<number>): void} [onChange] 选中变化回调，返回所选索引数组
-   * @returns {HTMLElement} 包含CheckboxGroup的DOM元素，可通过.value获取当前选中索引数组
-   */
   static CheckboxGroup(title, desc, selections, defaultIndices = [], onChange = () => {}) {
     const wrapper = document.createElement("div");
     wrapper.classList.add("checkbox-group", "card");
@@ -94,7 +83,7 @@ export class FastComponent {
     const selected = new Set(defaultIndices);
 
     const buttonsFragment = document.createDocumentFragment();
-    const buttons = selections.map((choice, i) => {
+    selections.forEach((choice, i) => {
       const btn = document.createElement("button");
       btn.classList.add("primaryButton");
       btn.textContent = choice.content;
@@ -109,29 +98,25 @@ export class FastComponent {
           btn.classList.add("active");
           choice.onSelect?.(wrapper);
         }
-        wrapper.value = [...selected]; // Update wrapper value
+        wrapper.value = [...selected];
         onChange([...selected]);
       });
       if (selected.has(i)) {
-        // Simulate click after element is in DOM or ensure active class is set
-         btn.classList.add("active"); // Set active class directly
+         btn.classList.add("active");
       }
       buttonsFragment.appendChild(btn);
-      return btn; // Still return btn if array needed
     });
 
     wrapper.appendChild(buttonsFragment);
-    // Initial onChange call after all buttons potentially processed by `btn.click()` or class set
     onChange([...selected]);
     
-    // Trigger onSelect for default selections
     defaultIndices.forEach(i => {
       if (selections[i]?.onSelect) {
         selections[i].onSelect(wrapper);
       }
     });
 
-    wrapper.value = [...selected]; // Ensure wrapper.value is set initially
+    wrapper.value = [...selected];
     wrapper.setWarning = (msg) => {
       wrapper.title = msg;
     };
@@ -139,17 +124,6 @@ export class FastComponent {
     return wrapper;
   }
 
-  /**
-   * 创建一个滑动条和输入框联动组件
-   * @param {string} title 标题
-   * @param {string} desc 描述
-   * @param {number} min 最小值
-   * @param {number} max 最大值
-   * @param {number} step 步长
-   * @param {number} defaultVal 默认值
-   * @param {function(number): void} [onChange] 值变化回调
-   * @returns {HTMLElement} DOM元素，可通过.value获取当前值
-   */
   static RangedSlide(title, desc, min = 0, max = 100, step = 1, defaultVal = 15, onChange = () => {}) {
     const wrapper = document.createElement("div");
     wrapper.classList.add("card");
@@ -206,16 +180,6 @@ export class FastComponent {
     return wrapper;
   }
 
-  /**
-   * 创建一个带标签的文本输入框
-   * @param {string} title 标题
-   * @param {string} desc 描述
-   * @param {string} label 输入框标签
-   * @param {string} placeholder 占位符
-   * @param {string} [defaultVal=""] 默认值
-   * @param {function(string): void} [onChange] 值变化回调
-   * @returns {HTMLElement} DOM元素，可通过.value获取当前输入内容
-   */
   static TextInput(title, desc, label, placeholder, defaultVal = "", onChange = () => {}) {
     const wrapper = document.createElement("div");
     wrapper.classList.add("text-input", "card");
@@ -226,7 +190,6 @@ export class FastComponent {
       wrapper.appendChild(titleEl);
     }
     
-
     if(desc != null) {
       const descEl = document.createElement("div");
       descEl.classList.add("primaryDesc");
@@ -240,7 +203,6 @@ export class FastComponent {
       labelEl.textContent = label;
     }
     
-
     const input = document.createElement("input");
     input.classList.add("primaryInputText");
     input.placeholder = placeholder;
@@ -256,7 +218,6 @@ export class FastComponent {
       wrapper.appendChild(input);
     }
     
-
     input.addEventListener("input", () => {
       wrapper.value = input.value;
       onChange(input.value);
@@ -270,15 +231,6 @@ export class FastComponent {
     return wrapper;
   }
 
-  /**
-   * 创建一个下拉菜单（支持嵌套）
-   * @param {string} title 标题
-   * @param {string} desc 描述
-   * @param {Array<{content: string, value: any, sub: object|null}>} items 下拉项数组
-   * @param {any} [defaultVal=""] 默认值
-   * @param {function(any): void} [onChange] 值变化回调
-   * @returns {HTMLElement} DOM元素，可通过.value获取当前选中值
-   */
   static DropMenu(title, desc, items, defaultVal = "", onChange = () => {}) {
     const wrapper = document.createElement("div");
     wrapper.classList.add("card");
@@ -310,7 +262,6 @@ export class FastComponent {
       onChange(select.value);
     }
     
-
     select.addEventListener("change", () => {
       wrapper.value = select.value;
       onChange(wrapper.value);
@@ -323,5 +274,194 @@ export class FastComponent {
 
     wrapper.appendChild(select);
     return wrapper;
+  }
+
+  // New Static Method
+  static createPlayerInfoDialog(playerInstance, i18nInstance) { // Renamed i18n to i18nInstance to avoid conflict
+      const dialogOverlay = document.createElement('div');
+      dialogOverlay.className = 'player-info-dialog-overlay';
+      dialogOverlay.style.position = 'fixed';
+      dialogOverlay.style.top = '0';
+      dialogOverlay.style.left = '0';
+      dialogOverlay.style.width = '100%';
+      dialogOverlay.style.height = '100%';
+      dialogOverlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
+      dialogOverlay.style.display = 'flex';
+      dialogOverlay.style.justifyContent = 'center';
+      dialogOverlay.style.alignItems = 'center';
+      dialogOverlay.style.zIndex = '1000';
+
+      const dialogContent = document.createElement('div');
+      dialogContent.className = 'player-info-dialog-content';
+      dialogContent.style.backgroundColor = 'var(--background-color, white)';
+      dialogContent.style.padding = '20px';
+      dialogContent.style.borderRadius = '8px';
+      dialogContent.style.minWidth = '300px';
+      dialogContent.style.maxWidth = '80%';
+      dialogContent.style.maxHeight = '80%';
+      dialogContent.style.overflowY = 'auto';
+      dialogContent.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+      dialogContent.style.position = 'relative'; // For absolute positioning of close button
+
+      const closeButton = document.createElement('button');
+      closeButton.textContent = i18nInstance.t('dialog_close_button') || 'Close';
+      closeButton.style.position = 'absolute';
+      closeButton.style.top = '10px';
+      closeButton.style.right = '10px';
+      closeButton.style.cursor = 'pointer';
+      closeButton.onclick = () => dialogOverlay.remove();
+      dialogContent.appendChild(closeButton);
+
+      const tabsContainer = document.createElement('div');
+      tabsContainer.className = 'dialog-tabs';
+      tabsContainer.style.marginBottom = '15px';
+      tabsContainer.style.borderBottom = '1px solid #ccc';
+
+      const panesContainer = document.createElement('div');
+      panesContainer.className = 'dialog-panes';
+
+      const tabs = [
+          { id: 'inventory', label: i18nInstance.t('dialog_tab_inventory') || 'Inventory' },
+          { id: 'attributes', label: i18nInstance.t('dialog_tab_attributes') || 'Attributes' },
+          { id: 'equipment', label: i18nInstance.t('dialog_tab_equipment') || 'Equipment' }
+      ];
+
+      tabs.forEach(tabInfo => {
+          const tabButton = document.createElement('button');
+          tabButton.textContent = tabInfo.label;
+          tabButton.className = 'dialog-tab-button';
+          tabButton.style.padding = '8px 12px';
+          tabButton.style.marginRight = '5px';
+          tabButton.style.border = '1px solid transparent';
+          tabButton.style.borderBottom = 'none';
+          tabButton.style.cursor = 'pointer';
+          tabButton.onclick = () => {
+              tabsContainer.querySelectorAll('.dialog-tab-button').forEach(btn => {
+                btn.style.backgroundColor = 'transparent'; // Reset style
+                btn.classList.remove('active');
+              });
+              panesContainer.querySelectorAll('.dialog-pane').forEach(pane => pane.style.display = 'none');
+              tabButton.classList.add('active');
+              tabButton.style.backgroundColor = '#eee'; // Active tab style
+              document.getElementById(tabInfo.id + '-pane').style.display = 'block';
+          };
+          tabsContainer.appendChild(tabButton);
+
+          const pane = document.createElement('div');
+          pane.id = tabInfo.id + '-pane';
+          pane.className = 'dialog-pane';
+          pane.style.display = 'none';
+          panesContainer.appendChild(pane);
+      });
+
+      dialogContent.appendChild(tabsContainer);
+      dialogContent.appendChild(panesContainer);
+      dialogOverlay.appendChild(dialogContent);
+
+      async function refreshDialogData() {
+          const inventoryPane = document.getElementById('inventory-pane');
+          inventoryPane.innerHTML = '';
+          const invTitle = document.createElement('h3');
+          invTitle.textContent = i18nInstance.t('dialog_tab_inventory') || 'Inventory';
+          inventoryPane.appendChild(invTitle);
+          const coinsDisplay = document.createElement('div');
+          coinsDisplay.textContent = `${i18nInstance.t('info_status_coin') || 'Coins'}: ${playerInstance.carrying_coins}`;
+          inventoryPane.appendChild(coinsDisplay);
+          const playerInventory = playerInstance.inventory;
+          for (const itemId in playerInventory) {
+              const itemArray = playerInventory[itemId];
+              if (itemArray && itemArray.length > 0) {
+                  const item = itemArray[0];
+                  const itemCount = item.use_time;
+                  if (itemCount <= 0) continue;
+                  const itemDiv = document.createElement('div');
+                  itemDiv.textContent = `${i18nInstance.t('item_' + item.item_id + '_name') || item.item_name} x ${itemCount}`;
+                  itemDiv.style.cursor = 'pointer';
+                  itemDiv.onclick = () => {
+                      let actionPromise;
+                      if (item.is_usable) {
+                          actionPromise = item.use(playerInstance);
+                      } else if (item.is_equipable) {
+                          actionPromise = item.equip(playerInstance);
+                      }
+                      if (actionPromise && typeof actionPromise.then === 'function') {
+                        actionPromise.then(() => refreshDialogData());
+                      } else { // If not a promise, refresh immediately (though most game actions should be async)
+                        refreshDialogData();
+                      }
+                  };
+                  inventoryPane.appendChild(itemDiv);
+              }
+          }
+
+          const attributesPane = document.getElementById('attributes-pane');
+          attributesPane.innerHTML = '';
+          const attrTitle = document.createElement('h3');
+          attrTitle.textContent = i18nInstance.t('dialog_tab_attributes') || 'Attributes';
+          attributesPane.appendChild(attrTitle);
+          const playerStatus = playerInstance.status;
+          for (const attrKey in playerStatus) {
+              if (attrKey === 'buffList' || attrKey === 'skillPoints' || attrKey.startsWith('max') || !playerStatus.hasOwnProperty(attrKey)) continue;
+              const attrValue = await playerInstance.getNextAttribute(attrKey);
+              const attrDiv = document.createElement('div');
+              let attrText = `${i18nInstance.t('status_' + attrKey) || attrKey}: ${attrValue}`;
+              const maxAttrKey = 'max' + attrKey.charAt(0).toUpperCase() + attrKey.slice(1);
+              if (playerStatus.hasOwnProperty(maxAttrKey)) {
+                   attrText += ` / ${await playerInstance.getNextAttribute(maxAttrKey)}`;
+              }
+              attrDiv.textContent = attrText;
+              attributesPane.appendChild(attrDiv);
+          }
+          const buffsTitle = document.createElement('h4');
+          buffsTitle.textContent = i18nInstance.t('dialog_buffs_title') || 'Active Buffs';
+          attributesPane.appendChild(buffsTitle);
+          if (playerStatus.buffList && playerStatus.buffList.length > 0) {
+              playerStatus.buffList.forEach(buff => {
+                  const buffDiv = document.createElement('div');
+                  buffDiv.textContent = `${i18nInstance.t('buff_' + buff.buff + '_name') || buff.buff}: ${buff.remainRound} rounds`;
+                  attributesPane.appendChild(buffDiv);
+              });
+          } else {
+              attributesPane.appendChild(document.createTextNode(i18nInstance.t('dialog_no_buffs') || 'No active buffs.'));
+          }
+
+          const equipmentPane = document.getElementById('equipment-pane');
+          equipmentPane.innerHTML = '';
+          const equipTitle = document.createElement('h3');
+          equipTitle.textContent = i18nInstance.t('dialog_tab_equipment') || 'Equipment';
+          equipmentPane.appendChild(equipTitle);
+          const playerEquipment = playerInstance.equipment;
+          let hasEquipment = false;
+          for (const slot in playerEquipment) {
+              if (playerEquipment[slot]) {
+                  hasEquipment = true;
+                  const item = playerEquipment[slot];
+                  const itemDiv = document.createElement('div');
+                  itemDiv.textContent = `${i18nInstance.t('part_' + item.equip_slot) || item.equip_slot}: ${i18nInstance.t('item_' + item.item_id + '_name') || item.item_name}`;
+                  itemDiv.style.cursor = 'pointer';
+                  itemDiv.onclick = () => {
+                      item.unwield(playerInstance).then(() => refreshDialogData());
+                  };
+                  equipmentPane.appendChild(itemDiv);
+              }
+          }
+           if (!hasEquipment) {
+              equipmentPane.appendChild(document.createTextNode(i18nInstance.t('dialog_no_equipment') || 'No equipment.'));
+          }
+
+          if (!tabsContainer.querySelector('.dialog-tab-button.active') && tabsContainer.firstChild) {
+               (tabsContainer.firstChild as HTMLElement).click();
+          }
+      }
+
+      refreshDialogData();
+
+      dialogOverlay.onclick = (event) => {
+          if (event.target === dialogOverlay) {
+              dialogOverlay.remove();
+          }
+      };
+
+      return dialogOverlay;
   }
 }

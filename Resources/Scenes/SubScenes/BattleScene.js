@@ -1,5 +1,5 @@
-import { SubScene } from "../../Classes/UI.js";
-import { log } from "../../Classes/Game.js";
+import { SubScene } from "../../Classes/SubScene.js";
+import { log } from "../../Classes/Utils.js";
 import { i18n } from "../../Classes/I18n.js";
 import {
   getGameInstance,
@@ -61,108 +61,110 @@ class BattleScene extends SubScene {
       });
     });
   }
-  createButton(name, content, callback, title = "", isForbid = false) {
+  createButton(name, content, callback, title = "", isForbid = false, extraClass = "") {
     const t = document.createElement("button");
     t.id = name;
     t.innerHTML = content;
     if (title) t.title = title;
     t.onclick = callback;
     if (isForbid) t.disabled = true;
+    if (extraClass) t.classList.add(extraClass);
     return t;
   }
   updateSelf() {
     if (this.battleData && this.battleData.battle) {
-      const fmt = {
-        MonsterName: this.battleData.monster.name,
-        PlayerHealthPoints: this.battleData.player.hp,
-        PlayerMaxHealthPoints: this.battleData.player.status.maxHp,
-        MonsterHealthPoints: this.battleData.monster.hp,
-        MonsterMaxHealthPoints: this.battleData.monster.status.maxHp,
-        RoundCount: this.battleData.battle.turn,
-      };
-      this.textContent = i18n.f(this.id + "_Data", fmt) + "<br/>";
-      if (this.battleData.player.status.buffList.length > 0) {
-        for (const i of this.battleData.player.status.buffList) {
-          const fmt_Buff = {
-            MonsterName: this.battleData.player.playerName
-              ? this.battleData.player.playerName["lastName"] +
-                " " +
-                this.battleData.player.playerName["firstName"]
-              : i18n.t("battle_player_default"),
-            BuffReason: i.reason,
-            BuffType:Buff_List[i.buff].effect_type,
-            BuffInfo:
-              (Buff_List[i.buff].no_round_limited_symbol
-                ? i18n.t("battle_buff_Effect_prefix2")
-                : i18n.f("battle_buff_Effect_prefix", {
-                    RemainRound: i.remainRound,
-                  })) + i18n.t(Buff_List[i.buff].effect_desc),
-            BuffName: i18n.t(Buff_List[i.buff].name),
-          };
-          this.textContent += i18n.f("battle_buff_reason", fmt_Buff) + "<br/>";
-        }
+      const player = this.battleData.player;
+      const monster = this.battleData.monster;
+      const battle = this.battleData.battle;
+
+      let playerBuffsHTML = '<h4>Buffs:</h4>';
+      if (player.status.buffList.length > 0) {
+        player.status.buffList.forEach(buff => {
+          const buffName = i18n.t(`buff_${buff.buff}_name`) || buff.buff;
+          const rounds = Buff_List[buff.buff]?.no_round_limited_symbol ? 'Persistent' : `${buff.remainRound}r`;
+          playerBuffsHTML += `<div>[B] ${buffName} (${rounds}) - ${i18n.t(Buff_List[buff.buff]?.effect_desc) || ''}</div>`;
+        });
+      } else {
+        playerBuffsHTML += `<div>${i18n.t('battle_no_player_buffs') || 'No active buffs.'}</div>`;
       }
-      if (this.battleData.monster.status.buffList.length > 0) {
-        for (const i of this.battleData.monster.status.buffList) {
-          const fmt_Buff = {
-            MonsterName: this.battleData.monster.name,
-            BuffReason: i.reason,
-            BuffType:Buff_List[i.buff].effect_type,
-            BuffInfo:
-              (Buff_List[i.buff].no_round_limited_symbol
-                ? i18n.t("battle_buff_Effect_prefix2")
-                : i18n.f("battle_buff_Effect_prefix", {
-                    RemainRound: i.remainRound,
-                  })) + i18n.t(Buff_List[i.buff].effect_desc),
-            BuffName: i18n.t(Buff_List[i.buff].name),
-          };
-          this.textContent += i18n.f("battle_buff_reason", fmt_Buff) + "<br/>";
-        }
+
+      let monsterBuffsHTML = '<h4>Buffs:</h4>';
+      if (monster.status.buffList.length > 0) {
+        monster.status.buffList.forEach(buff => {
+          const buffName = i18n.t(`buff_${buff.buff}_name`) || buff.buff;
+          const rounds = Buff_List[buff.buff]?.no_round_limited_symbol ? 'Persistent' : `${buff.remainRound}r`;
+          monsterBuffsHTML += `<div>[B] ${buffName} (${rounds}) - ${i18n.t(Buff_List[buff.buff]?.effect_desc) || ''}</div>`;
+        });
+      } else {
+        monsterBuffsHTML += `<div>${i18n.t('battle_no_monster_buffs') || 'No active buffs.'}</div>`;
       }
-      this.textContent += this.battleLogs.join("<br/>");
-      if (!getPlayerInstance().getFlag("FirstFight"))
-        this.textContent += "\nTips:将鼠标悬放在技能上可以查看技能效果！";
-      if (!this.battleData.battle.isBattleEnd) {
+
+      const playerHpPercentage = Math.max(0, (player.status.hp / player.status.maxHp) * 100);
+      const monsterHpPercentage = Math.max(0, (monster.status.hp / monster.status.maxHp) * 100);
+
+      this.textContent = `
+        <div class="battle-layout">
+            <div class="combatants-container">
+                <div class="combatant-info player-info">
+                    <h3>${i18n.t(player.name) || player.name}</h3>
+                    <div class="health-bar-container">
+                        <div class="health-bar-label">HP: ${player.status.hp} / ${player.status.maxHp}</div>
+                        <div class="health-bar" style="width: ${playerHpPercentage}%; background-color: green;"></div>
+                    </div>
+                    ${playerBuffsHTML}
+                </div>
+                <div class="combatant-info monster-info">
+                    <h3>${i18n.t(monster.name) || monster.name}</h3>
+                    <div class="health-bar-container">
+                        <div class="health-bar-label">HP: ${monster.status.hp} / ${monster.status.maxHp}</div>
+                        <div class="health-bar" style="width: ${monsterHpPercentage}%; background-color: red;"></div>
+                    </div>
+                    ${monsterBuffsHTML}
+                </div>
+            </div>
+            <div class="battle-log-area battle-log-panel">
+                <h4>${i18n.t('battle_log_title') || 'Battle Log'} (Round: ${battle.turn})</h4>
+                ${this.battleLogs.join("<br/>")}
+            </div>
+            <div class="battle-tips-area">
+                ${!getPlayerInstance().getFlag("FirstFight") ? (i18n.t('battle_tips_skill_hover') || 'Tips: Hover over skills to see their effects!') : ''}
+            </div>
+        </div>
+      `;
+
+      this.interactiveElements = []; // Clear before re-adding
+      if (!battle.isBattleEnd) {
         const skillButtons = [];
-        for (const i of this.battleData.player.skills) {
-          if (i.isCoolingDown) {
-            skillButtons.push(
-              this.createButton(
-                `${i.id}_skillbutton`,
-                i.skillName +
-                  i18n.f("info_skill_cooling_remain", {
-                    CoolingDownRoundsRemain: i.skillCD - i.CDCounter,
-                  }),
-                () => {
-                  return;
-                },
-                (i.isAutoTrigger ? i18n.t("skill_AutoTrigger_flag") : "") +
-                  i.skillDesc,
-                true
-              )
-            );
-          } else {
-            skillButtons.push(
-              this.createButton(
-                `${i.id}_skillbutton`,
-                i.skillName,
-                () => {
-                  const next = this.battleData.battle.onUseSkill(
-                    this.battleData.player,
-                    this.battleData.monster,
-                    i.id
-                  );
-                },
-                (i.isAutoTrigger ? i18n.t("skill_AutoTrigger_flag") : "") +
-                  i.skillDesc
-              )
-            );
+        for (const skill of player.skills) {
+          let buttonText = skill.skillName;
+          let isCooling = skill.isCoolingDown;
+          let extraClass = "";
+
+          if (isCooling) {
+            buttonText += ` (${i18n.f("info_skill_cooling_remain", { CoolingDownRoundsRemain: skill.skillCD - skill.CDCounter }) || (skill.skillCD - skill.CDCounter) + 'r'})`;
+            extraClass = "cooling-down";
           }
+
+          skillButtons.push(
+            this.createButton(
+              `${skill.id}_skillbutton`,
+              buttonText,
+              () => {
+                if (!isCooling) { // Double check, though button should be disabled
+                  battle.onUseSkill(
+                    player,
+                    monster,
+                    skill.id
+                  );
+                }
+              },
+              (skill.isAutoTrigger ? i18n.t("skill_AutoTrigger_flag") : "") + skill.skillDesc,
+              isCooling, // isForbid
+              extraClass // new extraClass parameter
+            )
+          );
         }
-        this.interactiveElements = [];
-        this.addInteractiveElement(
-          ...skillButtons.concat(this.defaultIntereactives)
-        );
+        this.addInteractiveElement(...skillButtons.concat(this.defaultIntereactives));
       }
     }
   }
