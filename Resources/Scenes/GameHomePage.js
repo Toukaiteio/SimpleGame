@@ -1,17 +1,16 @@
-import { Animations, Scene } from "../Classes/UI.js";
+import { Animations } from "../Classes/Animations.js";
+import { Scene } from "../Classes/Scene.js";
 import { FastComponent } from "../Classes/FastCompoent.js";
-import { log } from "../Classes/Game.js";
+import { log } from "../Classes/Utils.js";
 import {
   getUIInstance,
   getGameInstance,
   getPlayerInstance,
-  setRandom,
 } from "../Scripts/Shared.js";
 import { i18n } from "../Classes/I18n.js";
-import { General_Skills } from "../Scripts/Skills/General.js";
-import { SeededRandom } from "../Classes/Random.js";
-import { Save, SaveController } from "../Classes/Save.js";
-import { audioManager } from "../Classes/Audio.js";
+import { Save } from "../Classes/Save.js";
+import { SaveController } from "../Classes/SaveController.js";
+
 const ui = getUIInstance();
 const game = getGameInstance();
 /**

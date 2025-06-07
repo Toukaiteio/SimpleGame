@@ -1,7 +1,7 @@
-import { SubScene } from '../../Classes/UI.js';
+import { SubScene } from '../../Classes/SubScene.js';
 import { i18n } from '../../Classes/I18n.js';
 import { getPlayerInstance, getStoryTellerElement, getGameInstance } from '../../Scripts/Shared.js';
-import { InGameEvent } from '../../Classes/Game.js'; // Required for creating choices
+import { InGameEvent } from '../../Classes/InGameEvent.js';
 
 class ExampleScene extends SubScene {
   constructor() {

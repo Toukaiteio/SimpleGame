@@ -32,7 +32,9 @@ export class FastComponent {
       if (i === defaultIndex) btn.classList.add("active");
 
       btn.addEventListener("click", () => {
-        buttonWrapper.querySelectorAll('.primaryButton').forEach(b => b.classList.remove("active"));
+        buttonWrapper
+          .querySelectorAll(".primaryButton")
+          .forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
 
         if (selected !== i) {
@@ -46,11 +48,15 @@ export class FastComponent {
       buttonsFragment.appendChild(btn);
       return btn;
     });
-    
-    if (choices[defaultIndex]?.onSelect && defaultIndex >= 0 && defaultIndex < choices.length) {
+
+    if (
+      choices[defaultIndex]?.onSelect &&
+      defaultIndex >= 0 &&
+      defaultIndex < choices.length
+    ) {
       choices[defaultIndex].onSelect(wrapper);
     }
-    
+
     onChange(selected);
 
     buttonWrapper.appendChild(buttonsFragment);
@@ -63,7 +69,13 @@ export class FastComponent {
     return wrapper;
   }
 
-  static CheckboxGroup(title, desc, selections, defaultIndices = [], onChange = () => {}) {
+  static CheckboxGroup(
+    title,
+    desc,
+    selections,
+    defaultIndices = [],
+    onChange = () => {}
+  ) {
     const wrapper = document.createElement("div");
     wrapper.classList.add("checkbox-group", "card");
     wrapper.style.display = "flex";
@@ -87,7 +99,7 @@ export class FastComponent {
       const btn = document.createElement("button");
       btn.classList.add("primaryButton");
       btn.textContent = choice.content;
-      
+
       btn.addEventListener("click", () => {
         if (selected.has(i)) {
           selected.delete(i);
@@ -102,15 +114,15 @@ export class FastComponent {
         onChange([...selected]);
       });
       if (selected.has(i)) {
-         btn.classList.add("active");
+        btn.classList.add("active");
       }
       buttonsFragment.appendChild(btn);
     });
 
     wrapper.appendChild(buttonsFragment);
     onChange([...selected]);
-    
-    defaultIndices.forEach(i => {
+
+    defaultIndices.forEach((i) => {
       if (selections[i]?.onSelect) {
         selections[i].onSelect(wrapper);
       }
@@ -124,7 +136,15 @@ export class FastComponent {
     return wrapper;
   }
 
-  static RangedSlide(title, desc, min = 0, max = 100, step = 1, defaultVal = 15, onChange = () => {}) {
+  static RangedSlide(
+    title,
+    desc,
+    min = 0,
+    max = 100,
+    step = 1,
+    defaultVal = 15,
+    onChange = () => {}
+  ) {
     const wrapper = document.createElement("div");
     wrapper.classList.add("card");
     const titleEl = document.createElement("div");
@@ -169,7 +189,7 @@ export class FastComponent {
 
     input.addEventListener("input", () => sync(input.value));
     number.addEventListener("input", () => sync(number.value));
-    if(defaultVal != null) {
+    if (defaultVal != null) {
       wrapper.value = defaultVal;
       onChange(wrapper.value);
     }
@@ -180,17 +200,24 @@ export class FastComponent {
     return wrapper;
   }
 
-  static TextInput(title, desc, label, placeholder, defaultVal = "", onChange = () => {}) {
+  static TextInput(
+    title,
+    desc,
+    label,
+    placeholder,
+    defaultVal = "",
+    onChange = () => {}
+  ) {
     const wrapper = document.createElement("div");
     wrapper.classList.add("text-input", "card");
-    if(title != null) {
+    if (title != null) {
       const titleEl = document.createElement("div");
       titleEl.classList.add("primaryTitle");
       titleEl.textContent = title;
       wrapper.appendChild(titleEl);
     }
-    
-    if(desc != null) {
+
+    if (desc != null) {
       const descEl = document.createElement("div");
       descEl.classList.add("primaryDesc");
       descEl.textContent = desc;
@@ -198,26 +225,26 @@ export class FastComponent {
     }
 
     const labelEl = document.createElement("label");
-    if(label != null) {
+    if (label != null) {
       labelEl.classList.add("primaryLabel");
       labelEl.textContent = label;
     }
-    
+
     const input = document.createElement("input");
     input.classList.add("primaryInputText");
     input.placeholder = placeholder;
-    if(defaultVal != null) {
+    if (defaultVal != null) {
       input.value = defaultVal;
       onChange(input.value);
     }
 
-    if(label != null) {
+    if (label != null) {
       labelEl.appendChild(input);
       wrapper.appendChild(labelEl);
     } else {
       wrapper.appendChild(input);
     }
-    
+
     input.addEventListener("input", () => {
       wrapper.value = input.value;
       onChange(input.value);
@@ -255,13 +282,13 @@ export class FastComponent {
       if (item.sub) appendOption(item.sub, depth + 1);
     }
 
-    items.forEach(item => appendOption(item));
+    items.forEach((item) => appendOption(item));
 
-    if(defaultVal != null) {
+    if (defaultVal != null) {
       select.value = defaultVal;
       onChange(select.value);
     }
-    
+
     select.addEventListener("change", () => {
       wrapper.value = select.value;
       onChange(wrapper.value);
@@ -277,191 +304,226 @@ export class FastComponent {
   }
 
   // New Static Method
-  static createPlayerInfoDialog(playerInstance, i18nInstance) { // Renamed i18n to i18nInstance to avoid conflict
-      const dialogOverlay = document.createElement('div');
-      dialogOverlay.className = 'player-info-dialog-overlay';
-      dialogOverlay.style.position = 'fixed';
-      dialogOverlay.style.top = '0';
-      dialogOverlay.style.left = '0';
-      dialogOverlay.style.width = '100%';
-      dialogOverlay.style.height = '100%';
-      dialogOverlay.style.backgroundColor = 'rgba(0,0,0,0.5)';
-      dialogOverlay.style.display = 'flex';
-      dialogOverlay.style.justifyContent = 'center';
-      dialogOverlay.style.alignItems = 'center';
-      dialogOverlay.style.zIndex = '1000';
+  static createPlayerInfoDialog(playerInstance, i18nInstance) {
+    // Renamed i18n to i18nInstance to avoid conflict
+    const dialogOverlay = document.createElement("div");
+    dialogOverlay.className = "player-info-dialog-overlay";
 
-      const dialogContent = document.createElement('div');
-      dialogContent.className = 'player-info-dialog-content';
-      dialogContent.style.backgroundColor = 'var(--background-color, white)';
-      dialogContent.style.padding = '20px';
-      dialogContent.style.borderRadius = '8px';
-      dialogContent.style.minWidth = '300px';
-      dialogContent.style.maxWidth = '80%';
-      dialogContent.style.maxHeight = '80%';
-      dialogContent.style.overflowY = 'auto';
-      dialogContent.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-      dialogContent.style.position = 'relative'; // For absolute positioning of close button
+    const dialogContent = document.createElement("div");
+    dialogContent.className = "player-info-dialog-content";
 
-      const closeButton = document.createElement('button');
-      closeButton.textContent = i18nInstance.t('dialog_close_button') || 'Close';
-      closeButton.style.position = 'absolute';
-      closeButton.style.top = '10px';
-      closeButton.style.right = '10px';
-      closeButton.style.cursor = 'pointer';
-      closeButton.onclick = () => dialogOverlay.remove();
-      dialogContent.appendChild(closeButton);
+    const closeButton = document.createElement("button");
+    closeButton.textContent = i18nInstance.t("dialog_close_button") || "Close";
+    closeButton.onclick = () => dialogOverlay.remove();
+    dialogContent.appendChild(closeButton);
 
-      const tabsContainer = document.createElement('div');
-      tabsContainer.className = 'dialog-tabs';
-      tabsContainer.style.marginBottom = '15px';
-      tabsContainer.style.borderBottom = '1px solid #ccc';
+    const tabsContainer = document.createElement("div");
+    tabsContainer.className = "dialog-tabs";
 
-      const panesContainer = document.createElement('div');
-      panesContainer.className = 'dialog-panes';
+    const panesContainer = document.createElement("div");
+    panesContainer.className = "dialog-panes";
 
-      const tabs = [
-          { id: 'inventory', label: i18nInstance.t('dialog_tab_inventory') || 'Inventory' },
-          { id: 'attributes', label: i18nInstance.t('dialog_tab_attributes') || 'Attributes' },
-          { id: 'equipment', label: i18nInstance.t('dialog_tab_equipment') || 'Equipment' }
-      ];
+    const tabs = [
+      {
+        id: "inventory",
+        label: i18nInstance.t("dialog_tab_inventory") || "Inventory",
+      },
+      {
+        id: "attributes",
+        label: i18nInstance.t("dialog_tab_attributes") || "Attributes",
+      },
+      {
+        id: "equipment",
+        label: i18nInstance.t("dialog_tab_equipment") || "Equipment",
+      },
+    ];
+    const pannels = {};
+    tabs.forEach((tabInfo) => {
+      const tabButton = document.createElement("button");
+      tabButton.textContent = tabInfo.label;
+      tabButton.className = "dialog-tab-button";
+      tabButton.onclick = () => {
+        tabsContainer.querySelectorAll(".dialog-tab-button").forEach((btn) => {
+          btn.style.backgroundColor = "transparent"; // Reset style
+          btn.classList.remove("active");
+        });
+        panesContainer
+          .querySelectorAll(".dialog-pane")
+          .forEach((pane) => (pane.style.display = "none"));
+        tabButton.classList.add("active");
+        document.getElementById(tabInfo.id + "-pane").style.display = "block";
+      };
+      tabsContainer.appendChild(tabButton);
 
-      tabs.forEach(tabInfo => {
-          const tabButton = document.createElement('button');
-          tabButton.textContent = tabInfo.label;
-          tabButton.className = 'dialog-tab-button';
-          tabButton.style.padding = '8px 12px';
-          tabButton.style.marginRight = '5px';
-          tabButton.style.border = '1px solid transparent';
-          tabButton.style.borderBottom = 'none';
-          tabButton.style.cursor = 'pointer';
-          tabButton.onclick = () => {
-              tabsContainer.querySelectorAll('.dialog-tab-button').forEach(btn => {
-                btn.style.backgroundColor = 'transparent'; // Reset style
-                btn.classList.remove('active');
-              });
-              panesContainer.querySelectorAll('.dialog-pane').forEach(pane => pane.style.display = 'none');
-              tabButton.classList.add('active');
-              tabButton.style.backgroundColor = '#eee'; // Active tab style
-              document.getElementById(tabInfo.id + '-pane').style.display = 'block';
+      const pane = document.createElement("div");
+      pane.id = tabInfo.id + "-pane";
+      pane.className = "dialog-pane";
+      pane.style.display = "none";
+      pannels[tabInfo.id] = {
+        pane: pane,
+        button: tabButton,
+      };
+      panesContainer.appendChild(pane);
+    });
+
+    dialogContent.appendChild(tabsContainer);
+    dialogContent.appendChild(panesContainer);
+    dialogOverlay.appendChild(dialogContent);
+
+    const refreshDialogData = async () => {
+      // Arrow function to capture 'this' context and local variables
+      const inventoryPane = pannels['inventory']['pane'];
+      const attributesPane = pannels['attributes']['pane'];
+      const equipmentPane = pannels['equipment']['pane'];
+      // 更新 Inventory 面板
+      inventoryPane.innerHTML = "";
+      const invTitle = document.createElement("h3");
+      invTitle.textContent =
+        i18nInstance.t("dialog_tab_inventory") || "Inventory";
+      inventoryPane.appendChild(invTitle);
+
+      const coinsDisplay = document.createElement("div");
+      coinsDisplay.textContent = `${
+        i18nInstance.t("info_status_coin") || "Coins"
+      }: ${playerInstance.carrying_coins}`;
+      inventoryPane.appendChild(coinsDisplay);
+
+      const playerInventory = playerInstance.inventory;
+      for (const itemId in playerInventory) {
+        const itemArray = playerInventory[itemId];
+        if (itemArray && itemArray.length > 0) {
+          const item = itemArray[0];
+          const itemCount = item.use_time;
+          if (itemCount <= 0) continue;
+
+          const itemDiv = document.createElement("div");
+          itemDiv.textContent = `${
+            i18nInstance.t("item_" + item.item_id + "_name") || item.item_name
+          } x ${itemCount}`;
+          itemDiv.style.cursor = "pointer";
+          itemDiv.onclick = () => {
+            let actionPromise;
+            if (item.is_usable) {
+              actionPromise = item.use(playerInstance);
+            } else if (item.is_equipable) {
+              actionPromise = item.equip(playerInstance);
+            }
+            if (actionPromise && typeof actionPromise.then === "function") {
+              actionPromise.then(refreshDialogData);
+            } else {
+              refreshDialogData();
+            }
           };
-          tabsContainer.appendChild(tabButton);
-
-          const pane = document.createElement('div');
-          pane.id = tabInfo.id + '-pane';
-          pane.className = 'dialog-pane';
-          pane.style.display = 'none';
-          panesContainer.appendChild(pane);
-      });
-
-      dialogContent.appendChild(tabsContainer);
-      dialogContent.appendChild(panesContainer);
-      dialogOverlay.appendChild(dialogContent);
-
-      async function refreshDialogData() {
-          const inventoryPane = document.getElementById('inventory-pane');
-          inventoryPane.innerHTML = '';
-          const invTitle = document.createElement('h3');
-          invTitle.textContent = i18nInstance.t('dialog_tab_inventory') || 'Inventory';
-          inventoryPane.appendChild(invTitle);
-          const coinsDisplay = document.createElement('div');
-          coinsDisplay.textContent = `${i18nInstance.t('info_status_coin') || 'Coins'}: ${playerInstance.carrying_coins}`;
-          inventoryPane.appendChild(coinsDisplay);
-          const playerInventory = playerInstance.inventory;
-          for (const itemId in playerInventory) {
-              const itemArray = playerInventory[itemId];
-              if (itemArray && itemArray.length > 0) {
-                  const item = itemArray[0];
-                  const itemCount = item.use_time;
-                  if (itemCount <= 0) continue;
-                  const itemDiv = document.createElement('div');
-                  itemDiv.textContent = `${i18nInstance.t('item_' + item.item_id + '_name') || item.item_name} x ${itemCount}`;
-                  itemDiv.style.cursor = 'pointer';
-                  itemDiv.onclick = () => {
-                      let actionPromise;
-                      if (item.is_usable) {
-                          actionPromise = item.use(playerInstance);
-                      } else if (item.is_equipable) {
-                          actionPromise = item.equip(playerInstance);
-                      }
-                      if (actionPromise && typeof actionPromise.then === 'function') {
-                        actionPromise.then(() => refreshDialogData());
-                      } else { // If not a promise, refresh immediately (though most game actions should be async)
-                        refreshDialogData();
-                      }
-                  };
-                  inventoryPane.appendChild(itemDiv);
-              }
-          }
-
-          const attributesPane = document.getElementById('attributes-pane');
-          attributesPane.innerHTML = '';
-          const attrTitle = document.createElement('h3');
-          attrTitle.textContent = i18nInstance.t('dialog_tab_attributes') || 'Attributes';
-          attributesPane.appendChild(attrTitle);
-          const playerStatus = playerInstance.status;
-          for (const attrKey in playerStatus) {
-              if (attrKey === 'buffList' || attrKey === 'skillPoints' || attrKey.startsWith('max') || !playerStatus.hasOwnProperty(attrKey)) continue;
-              const attrValue = await playerInstance.getNextAttribute(attrKey);
-              const attrDiv = document.createElement('div');
-              let attrText = `${i18nInstance.t('status_' + attrKey) || attrKey}: ${attrValue}`;
-              const maxAttrKey = 'max' + attrKey.charAt(0).toUpperCase() + attrKey.slice(1);
-              if (playerStatus.hasOwnProperty(maxAttrKey)) {
-                   attrText += ` / ${await playerInstance.getNextAttribute(maxAttrKey)}`;
-              }
-              attrDiv.textContent = attrText;
-              attributesPane.appendChild(attrDiv);
-          }
-          const buffsTitle = document.createElement('h4');
-          buffsTitle.textContent = i18nInstance.t('dialog_buffs_title') || 'Active Buffs';
-          attributesPane.appendChild(buffsTitle);
-          if (playerStatus.buffList && playerStatus.buffList.length > 0) {
-              playerStatus.buffList.forEach(buff => {
-                  const buffDiv = document.createElement('div');
-                  buffDiv.textContent = `${i18nInstance.t('buff_' + buff.buff + '_name') || buff.buff}: ${buff.remainRound} rounds`;
-                  attributesPane.appendChild(buffDiv);
-              });
-          } else {
-              attributesPane.appendChild(document.createTextNode(i18nInstance.t('dialog_no_buffs') || 'No active buffs.'));
-          }
-
-          const equipmentPane = document.getElementById('equipment-pane');
-          equipmentPane.innerHTML = '';
-          const equipTitle = document.createElement('h3');
-          equipTitle.textContent = i18nInstance.t('dialog_tab_equipment') || 'Equipment';
-          equipmentPane.appendChild(equipTitle);
-          const playerEquipment = playerInstance.equipment;
-          let hasEquipment = false;
-          for (const slot in playerEquipment) {
-              if (playerEquipment[slot]) {
-                  hasEquipment = true;
-                  const item = playerEquipment[slot];
-                  const itemDiv = document.createElement('div');
-                  itemDiv.textContent = `${i18nInstance.t('part_' + item.equip_slot) || item.equip_slot}: ${i18nInstance.t('item_' + item.item_id + '_name') || item.item_name}`;
-                  itemDiv.style.cursor = 'pointer';
-                  itemDiv.onclick = () => {
-                      item.unwield(playerInstance).then(() => refreshDialogData());
-                  };
-                  equipmentPane.appendChild(itemDiv);
-              }
-          }
-           if (!hasEquipment) {
-              equipmentPane.appendChild(document.createTextNode(i18nInstance.t('dialog_no_equipment') || 'No equipment.'));
-          }
-
-          if (!tabsContainer.querySelector('.dialog-tab-button.active') && tabsContainer.firstChild) {
-               (tabsContainer.firstChild as HTMLElement).click();
-          }
+          inventoryPane.appendChild(itemDiv);
+        }
       }
 
-      refreshDialogData();
+      // 更新 Attributes 面板
+      attributesPane.innerHTML = "";
+      const attrTitle = document.createElement("h3");
+      attrTitle.textContent =
+        i18nInstance.t("dialog_tab_attributes") || "Attributes";
+      attributesPane.appendChild(attrTitle);
 
-      dialogOverlay.onclick = (event) => {
-          if (event.target === dialogOverlay) {
-              dialogOverlay.remove();
-          }
-      };
+      const playerStatus = playerInstance.status;
+      for (const attrKey in playerStatus) {
+        if (
+          attrKey === "buffList" ||
+          attrKey === "skillPoints" ||
+          attrKey.startsWith("max") ||
+          !playerStatus.hasOwnProperty(attrKey)
+        )
+          continue;
 
-      return dialogOverlay;
+        const attrValue = await playerInstance.getNextAttribute(attrKey);
+        const attrDiv = document.createElement("div");
+        let attrText = `${
+          i18nInstance.t("status_" + attrKey) || attrKey
+        }: ${attrValue}`;
+
+        const maxAttrKey =
+          "max" + attrKey.charAt(0).toUpperCase() + attrKey.slice(1);
+        if (playerStatus.hasOwnProperty(maxAttrKey)) {
+          attrText += ` / ${await playerInstance.getNextAttribute(maxAttrKey)}`;
+        }
+
+        attrDiv.textContent = attrText;
+        attributesPane.appendChild(attrDiv);
+      }
+
+      const buffsTitle = document.createElement("h4");
+      buffsTitle.textContent =
+        i18nInstance.t("dialog_buffs_title") || "Active Buffs";
+      attributesPane.appendChild(buffsTitle);
+
+      if (playerStatus.buffList && playerStatus.buffList.length > 0) {
+        playerStatus.buffList.forEach((buff) => {
+          const buffDiv = document.createElement("div");
+          buffDiv.textContent = `${
+            i18nInstance.t("buff_" + buff.buff + "_name") || buff.buff
+          }: ${buff.remainRound} rounds`;
+          attributesPane.appendChild(buffDiv);
+        });
+      } else {
+        attributesPane.appendChild(
+          document.createTextNode(
+            i18nInstance.t("dialog_no_buffs") || "No active buffs."
+          )
+        );
+      }
+
+      // 更新 Equipment 面板
+      equipmentPane.innerHTML = "";
+      const equipTitle = document.createElement("h3");
+      equipTitle.textContent =
+        i18nInstance.t("dialog_tab_equipment") || "Equipment";
+      equipmentPane.appendChild(equipTitle);
+
+      const playerEquipment = playerInstance.equipment;
+      let hasEquipment = false;
+      for (const slot in playerEquipment) {
+        if (playerEquipment[slot]) {
+          hasEquipment = true;
+          const item = playerEquipment[slot];
+          const itemDiv = document.createElement("div");
+          itemDiv.textContent = `${
+            i18nInstance.t("part_" + item.equip_slot) || item.equip_slot
+          }: ${
+            i18nInstance.t("item_" + item.item_id + "_name") || item.item_name
+          }`;
+          itemDiv.style.cursor = "pointer";
+          itemDiv.onclick = () => {
+            item.unwield(playerInstance).then(refreshDialogData);
+          };
+          equipmentPane.appendChild(itemDiv);
+        }
+      }
+
+      if (!hasEquipment) {
+        equipmentPane.appendChild(
+          document.createTextNode(
+            i18nInstance.t("dialog_no_equipment") || "No equipment."
+          )
+        );
+      }
+
+      // 自动激活第一个标签页
+      if (
+        !tabsContainer.querySelector(".dialog-tab-button.active") &&
+        tabsContainer.firstChild
+      ) {
+        tabsContainer.firstChild.click();
+      }
+    };
+
+    refreshDialogData();
+
+    dialogOverlay.onclick = (event) => {
+      if (event.target === dialogOverlay) {
+        dialogOverlay.remove();
+      }
+    };
+
+    return dialogOverlay;
   }
 }
