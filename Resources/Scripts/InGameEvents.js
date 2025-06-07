@@ -18,7 +18,7 @@ export class InGameEvents {
     }
     return InGameEvents.instance;
   }
-  static allowEnteringSubscene = ["BerryForest", "BareGround", "MiddleTown"];
+  static allowEnteringSubscene = [];
   static randomChoose(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
   }
@@ -48,7 +48,7 @@ export class InGameEvents {
               "has_leaved_palace",
               true
             );
-            player.moveTo("#BerryForest");
+            player.moveTo("#ExampleScene");
 
           },
         },
@@ -80,7 +80,7 @@ export class InGameEvents {
             /** @type {Player} */
             const player = getPlayerInstance();
             player
-              .moveTo("#KingdomPalace")
+              .moveTo("#DefaultFallbackLocation")
               .addHook("after", async (self, game) => {
                 getPlayerInstance().addFlag("back_palace_at_just_begin", true);
               });
@@ -153,7 +153,7 @@ export class InGameEvents {
             /** @type {Player} */
             i18n.m("info_hero", i18n.t("info_hero_loser"));
             const player = getPlayerInstance();
-            player.moveTo("#BerryForest");
+            player.moveTo("#DefaultFallbackLocation");
           },
         },
         (key) => {

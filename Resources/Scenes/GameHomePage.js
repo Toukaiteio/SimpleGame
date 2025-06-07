@@ -1,9 +1,9 @@
-import { Animations, FastComponent, Scene } from "../Classes/UI.js";
+import { Animations, Scene } from "../Classes/UI.js";
+import { FastComponent } from "../Classes/FastCompoent.js";
 import { log } from "../Classes/Game.js";
 import {
   getUIInstance,
   getGameInstance,
-  getMapInstance,
   getPlayerInstance,
   setRandom,
 } from "../Scripts/Shared.js";
@@ -43,6 +43,7 @@ class GameHomePage extends Scene {
         },
       ])
     );
+    // 创建性别选择组件
     this.addComponent(
       "SelectGender",
       FastComponent.RadioGroup(i18n.t("option_gender_select"), [
@@ -51,19 +52,17 @@ class GameHomePage extends Scene {
           onSelect: (self) => {
             game.setGameSetting("gender", 1);
           },
+          // 设置默认值
+          default: game.getGameSetting("gender") === 1
         },
         {
           content: i18n.t("option_gender_select_female"),
           onSelect: (self) => {
             game.setGameSetting("gender", 0);
           },
-        },
-        {
-          content: i18n.t("option_gender_select_futanari"),
-          onSelect: (self) => {
-            game.setGameSetting("gender", -1);
-          },
-        },
+          // 设置默认值
+          default: game.getGameSetting("gender") === 0 || game.getGameSetting("gender") === -1
+        }
       ])
     );
     this.addComponent(
@@ -154,7 +153,7 @@ class GameHomePage extends Scene {
     getPlayerInstance()
       .getSelfJson(true)
       .addHook("after", (self) => {
-        const tempSave = new Save(self.data.result, "KingdomPalace");
+        const tempSave = new Save(self.data.result, "ExampleScene");
         tempSave.load();
       });
     // tempSave.load();

@@ -1,4 +1,4 @@
-import { getPlayerInstance,getGameInstance } from "../Scripts/Shared.js";
+import { getPlayerInstance, getGameInstance } from "../Scripts/Shared.js";
 import { ItemBuffs } from "../Scripts/Buffs/Items.js";
 /**
  * @class Item
@@ -38,7 +38,7 @@ export class Item {
     onEquipDo = [],
     onUnwieldDo = [],
     onUseDo = [],
-    owner = getPlayerInstance(),
+    owner = getPlayerInstance()
   ) {
     // 设置基本属性
     this.item_id = item_id;
@@ -57,168 +57,161 @@ export class Item {
     this.owner = owner;
     this.use_time = 1;
   }
-  /** 物品被使用时回调 */
-  onUse(status,target){
-    return;
-  }
   /**
-    * 增加物品的使用次数。
-    * @param {number} num - 增加的次数。
-    */
-  addUseTime(num){
+   * 执行物品相关事件。
+   * @private
+   * @param {string} eventName - 事件名称。
+   * @param {Function} itemAction - 事件回调。
+   * @param {Object} [extraData={}] - 额外传递的数据。
+   * @returns {Promise}
+   */
+  #runEvent(eventName, itemAction, extraData = {}) {
     const game = getGameInstance();
     return game.insertEvent(
       game.eventWrapper(
-        "addUseTime",
-        { num, item: this },
+        eventName,
+        { item: this, ...extraData },
         {
-          during: async (self, game) => {
-            const item = self.data.item;
-            item.use_time += num;
+          after: async (self, game) => {
+            itemAction(self, game);
           },
         }
       )
+    );
+  }
+  /** 物品被使用时回调 */
+  onUse(status, target) {
+    return;
+  }
+  /**
+   * 增加物品的使用次数。
+   * @param {number} num - 增加的次数。
+   */
+  addUseTime(num) {
+    return this.#runEvent(
+      "addUseTime",
+      (self, game) => {
+        const item = self.data.item;
+        item.use_time += num;
+      },
+      { num }
     );
   }
   /**
    * 减少物品的使用次数。
    * @param {number} num - 减少的次数。
    */
-  costUseTime(num){
-    const game = getGameInstance();
-    return game.insertEvent(
-      game.eventWrapper(
-        "costUseTime",
-        { num, item: this },
-        {
-          during: async (self, game) => {
-            const item = self.data.item;
-            if(item.use_time > num){
-              item.use_time -= num;
-            }else{
-              item.use_time = 0;
-              // delete item.owner.inventory[item.item_id];
-            }
-          },
+  costUseTime(num) {
+    return this.#runEvent(
+      "costUseTime",
+      (self, game) => {
+        const item = self.data.item;
+        if (item.use_time > num) {
+          item.use_time -= num;
+        } else {
+          item.use_time = 0;
+          // delete item.owner.inventory[item.item_id];
         }
-      )
+      },
+      { num }
     );
   }
   /**
    * 强化流程变更为如下：
    * 1、设定强化路径，每个不同的武器强化路径有着对应强化后武器ID
    * 2、玩家选择目标武器，然后向玩家背包中添加此武器，并将原武器删除
+   * @param {Player|Monster} [target=getPlayerInstance()] - 强化目标
    */
-  enhance(player) {
-    const game = getGameInstance();
-    return game.insertEvent(
-      game.eventWrapper(
-        "enhance",
-        { item: this, player: player },
-        {
-          after: async (self, game) => {
-            const item = self.data.item;
-            if (
-              item.is_enhanceable
-            ) {
-
-            }
-          },
+  enhance(target = getPlayerInstance()) {
+    return this.#runEvent(
+      "enhance",
+      (self, game) => {
+        const item = self.data.item;
+        if (item.is_enhanceable) {
+          // 强化逻辑
         }
-      )
+      },
+      { target }
     );
   }
 
   /**
    * 装备物品时触发，调用装备的回调函数。
+   * @param {Player|Monster} [target=getPlayerInstance()] - 装备目标
    */
-  equip(player) {
-    const game = getGameInstance();
-    return game.insertEvent(
-      game.eventWrapper(
-        "equip",
-        { item: this, player: player }, // 没有参数传入
-        {
-          after: async (self, game) => {
-            const item = self.data.item;
-            if (item.is_equipable) {
-              for(const i of item.onEquipDo){
-                i(item,self.data.player);
-              }
+  equip(target = getPlayerInstance()) {
+    return this.#runEvent(
+      "equip",
+      (self, game) => {
+        const item = self.data.item;
+        if (item.is_equipable) {
+          for (const i of item.onEquipDo) {
+            try {
+              i(this, self.data.target);
+            } catch (e) {
+              console.error("Error in equip callback:", e);
             }
-          },
+          }
         }
-      )
+      },
+      { target }
     );
   }
 
   /**
    * 取消装备物品时触发，调用取消装备的回调函数。
-   * @param {Player} player
+   * @param {Player|Monster} [target=getPlayerInstance()] - 取消装备目标
    */
-  unwield(player) {
-    const game = getGameInstance();
-    return game.insertEvent(
-      game.eventWrapper(
-        "unwield",
-        { item: this, player: player }, // 没有参数传入
-        {
-          after: async (self, game) => {
-            const item = self.data.item;
-            for(const i of item.onUnwieldDo){
-              i(item,self.data.player)
-            }
-          },
+  unwield(target = getPlayerInstance()) {
+    return this.#runEvent(
+      "unwield",
+      (self, game) => {
+        const item = self.data.item;
+        for (const i of item.onUnwieldDo) {
+          try {
+            i(this, self.data.target);
+          } catch (e) {
+            console.error("Error in equip callback:", e);
+          }
         }
-      )
+      },
+      { target }
     );
   }
 
   /**
    * 使用物品时触发，调用使用的回调函数。
+   * @param {Player|Monster} [target=getPlayerInstance()] - 使用目标
    */
   use(target = getPlayerInstance()) {
-    const game = getGameInstance();
-    return game.insertEvent(
-      game.eventWrapper(
-        "use",
-        { item: this , target }, // 没有参数传入
-        {
-          after: async (self, game) => {
-            const item = self.data.item;
-            if (item.is_usable) {
-              for(const i of item.onUseDo){
-                i(item,self.data.target)
-              }
+    return this.#runEvent(
+      "use",
+      (self, game) => {
+        const item = self.data.item;
+        if (item.is_usable) {
+          for (const i of item.onUseDo) {
+            try {
+              i(this, self.data.target);
+            } catch (e) {
+              console.error("Error in equip callback:", e);
             }
-          },
+          }
         }
-      )
-    )
+      },
+      { target }
+    );
   }
   /**
    * 获取当前物品的关键信息，并返回一个JSON字符串。
    * 只包含可能会变化的属性。
    */
   getSelfJson() {
-    return game.insertEvent(
-      game.eventWrapper(
-        "getSelfJson",
-        { item: this },
-        {
-          after: async (self, game) => {
-            const item = self.data.item;
-            const jsonObject = {
-              item_id: item.item_id,
-              item_name: item.item_name,
-              item_desc: item.item_desc,
-              use_time:this.use_time
-            };
-            self.result = JSON.stringify(jsonObject);
-          },
-        }
-      )
-    );
+    return JSON.stringify({
+      item_id: this.item_id,
+      item_name: this.item_name,
+      item_desc: this.item_desc,
+      use_time: this.use_time,
+    });
   }
 }
 
@@ -227,7 +220,7 @@ export class Item {
  * @param {Object} itemData - 物品数据定义对象。
  * @returns {Item} 返回转化后的ITEM类实例。
  */
-export function loadItem(itemData) {
+Item.fromData = function (itemData) {
   const transformedData = { ...itemData };
 
   // 将字符串形式的函数名转换为实际的函数引用
@@ -249,4 +242,4 @@ export function loadItem(itemData) {
   }
 
   return new Item(transformedData);
-}
+};

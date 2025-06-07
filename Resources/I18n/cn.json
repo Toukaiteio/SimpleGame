@@ -106,7 +106,7 @@
     "BareGround":"<span hasDescription data-description='<#subscene_desc_BareGround#>'>一片荒地</span>",
     "MiddleTown":"<span hasDescription data-description='<#subscene_desc_MiddleTown#>'>一座城镇</span>",
 
-    "subscene_desc_KingdomPalace":"倘若你不想被卷入麻烦，那么请牢记要穿着得体，并待在安全、明亮的地方。夜晚是非常危险的，尤其当你身穿色情下流的服饰时，那将引起某些人的注意——而这究竟会给你带来好运还是霉头，谁知道呢？\n\n新的学年将于明天09:00开始。\n巴士是这个小镇里最便捷的交通方式，上学的时候别忘记背好书包穿好校服！\n\n你可以通过完成npc交给你的任务获得意想不到的收获!\n",
+    "subscene_desc_KingdomPalace":"一位庄严的国王守卫着这里\n",
     "subscene_desc_BerryForest":"这里有许多的浆果，看上去很美丽。\n",
     "subscene_desc_BareGround":"一片什么都没有的荒地。\n",
     "subscene_desc_MiddleTown":"一座城镇，来来往往的有很多人。\n",
@@ -139,5 +139,14 @@
     "move_out_goCorrectPath":"<span hasDescription data-description-at='move_out_warning'>走你认为正确的路</span>",
     "move_out_goWrongPath":"<span hasDescription data-description-at='move_out_warning'>走你认为错误的路</span>",
     "hero_find_a_town_explore":"<span hasDescription data-description-at='ending_selection_warning'>探索城镇</span>",
-    "hero_find_a_town_check":"<span style='color:yellow;' hasDescription data-description-at='ending_selection_warning'>调查骚乱</span>"
+    "hero_find_a_town_check":"<span style='color:yellow;' hasDescription data-description-at='ending_selection_warning'>调查骚乱</span>",
+    "subscene_desc_ExampleScene": "这是一个示例场景，展示了如何构建游戏场景。",
+    "example_scene_initial_text": "欢迎来到示例场景。这里空空如也，但充满了可能性。",
+    "example_scene_event_name": "一个重要的抉择",
+    "example_scene_event_content": "你面前有两条路，你会选择哪一条？",
+    "example_scene_choice_1_text": "选择左边的路",
+    "example_scene_choice_1_feedback": "你选择了左边的路。一阵微风吹过。",
+    "example_scene_choice_2_text": "选择右边的路",
+    "example_scene_choice_2_feedback": "你选择了右边的路。远处传来了鸟鸣。",
+    "example_scene_continue_button": "继续"
 }

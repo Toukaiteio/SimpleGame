@@ -12,16 +12,12 @@ export async function loadScenes() {
         'GameHomePage.js',
         "GameStoryTeller.js",
         // "GameSaveList.js",
-        "BeforeStart.js"
         // 可以在这里添加其他场景文件
     ];
     // 子场景文件的路径
     const subSceneFiles = [
-        "MiddleTown.js",
-        "BerryForest.js",
-        "KingdomPalace.js",
         "BattleScene.js",
-        "BareGround.js"
+        "ExampleScene.js",
     ]
     try {
         // 动态导入每个场景文件
