@@ -3,6 +3,8 @@ import { Item } from "../../Classes/Item.js";
 import { Animations } from "../../Classes/Animations.js";
 import { ItemBuffs } from "../Buffs/Items.js";
 import { getGameInstance, getPlayerInstance } from "../Shared.js";
+import { Sword } from "./Weapons.js";
+
 export class berry extends Item {
     constructor(
       item_id = "berry",
@@ -370,5 +372,6 @@ export const item_list = {
     "school_uniform_upper_male":school_uniform_upper_male,
     "school_uniform_lower_male":school_uniform_lower_male,
     "underwear_lower_male":underwear_lower_male,
+    "sword": Sword,
 
 }

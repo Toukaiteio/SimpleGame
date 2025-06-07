@@ -1,6 +1,6 @@
 import { Animations } from "../Classes/Animations.js";
 import { Scene } from "../Classes/Scene.js";
-import { FastComponent } from "../Classes/FastCompoent.js";
+import { FastComponent } from "../Classes/FastComponent.js";
 import { log } from "../Classes/Utils.js";
 import {
   getUIInstance,

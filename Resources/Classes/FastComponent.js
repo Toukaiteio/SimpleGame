@@ -324,20 +324,10 @@ export class FastComponent {
     panesContainer.className = "dialog-panes";
 
     const tabs = [
-      {
-        id: "inventory",
-        label: i18nInstance.t("dialog_tab_inventory") || "Inventory",
-      },
-      {
-        id: "attributes",
-        label: i18nInstance.t("dialog_tab_attributes") || "Attributes",
-      },
-      {
-        id: "equipment",
-        label: i18nInstance.t("dialog_tab_equipment") || "Equipment",
-      },
+      { id: "mergedInventory", label: i18nInstance.t("dialog_tab_inventory") || "Inventory" },
+      { id: "attributes", label: i18nInstance.t("dialog_tab_attributes") || "Attributes" },
     ];
-    const pannels = {};
+    const pannels = {}; // Changed from 'panels' to 'pannels' to match existing typo, will correct later if possible
     tabs.forEach((tabInfo) => {
       const tabButton = document.createElement("button");
       tabButton.textContent = tabInfo.label;
@@ -359,7 +349,7 @@ export class FastComponent {
       pane.id = tabInfo.id + "-pane";
       pane.className = "dialog-pane";
       pane.style.display = "none";
-      pannels[tabInfo.id] = {
+      pannels[tabInfo.id] = { // Changed from 'panels' to 'pannels'
         pane: pane,
         button: tabButton,
       };
@@ -371,50 +361,80 @@ export class FastComponent {
     dialogOverlay.appendChild(dialogContent);
 
     const refreshDialogData = async () => {
-      // Arrow function to capture 'this' context and local variables
-      const inventoryPane = pannels['inventory']['pane'];
+      const mergedInventoryPane = pannels['mergedInventory']['pane'];
       const attributesPane = pannels['attributes']['pane'];
-      const equipmentPane = pannels['equipment']['pane'];
-      // 更新 Inventory 面板
-      inventoryPane.innerHTML = "";
+
+      // 更新 Merged Inventory 面板
+      mergedInventoryPane.innerHTML = "";
       const invTitle = document.createElement("h3");
-      invTitle.textContent =
-        i18nInstance.t("dialog_tab_inventory") || "Inventory";
-      inventoryPane.appendChild(invTitle);
+      invTitle.textContent = i18nInstance.t("dialog_tab_inventory") || "Inventory";
+      mergedInventoryPane.appendChild(invTitle);
 
       const coinsDisplay = document.createElement("div");
       coinsDisplay.textContent = `${
         i18nInstance.t("info_status_coin") || "Coins"
       }: ${playerInstance.carrying_coins}`;
-      inventoryPane.appendChild(coinsDisplay);
+      mergedInventoryPane.appendChild(coinsDisplay);
 
       const playerInventory = playerInstance.inventory;
       for (const itemId in playerInventory) {
         const itemArray = playerInventory[itemId];
         if (itemArray && itemArray.length > 0) {
-          const item = itemArray[0];
-          const itemCount = item.use_time;
-          if (itemCount <= 0) continue;
+          // Iterate through each instance of the item if items are not stacked by reference
+          for (const item of itemArray) { // Assuming itemArray contains distinct item instances
+            if (item.use_time <= 0) continue; // Skip if quantity is zero
 
-          const itemDiv = document.createElement("div");
-          itemDiv.textContent = `${
-            i18nInstance.t("item_" + item.item_id + "_name") || item.item_name
-          } x ${itemCount}`;
-          itemDiv.style.cursor = "pointer";
-          itemDiv.onclick = () => {
-            let actionPromise;
+            const itemDiv = document.createElement("div");
+            itemDiv.className = "inventory-item-row"; // For styling
+
+            let itemDisplayName = `${i18nInstance.t("item_" + item.item_id + "_name") || item.item_name} x ${item.use_time}`;
+
+            let isEquipped = false;
+            let equippedSlot = null;
+            for (const slot in playerInstance.equipment) {
+              if (playerInstance.equipment[slot] === item) {
+                isEquipped = true;
+                equippedSlot = slot;
+                break;
+              }
+            }
+
+            if (isEquipped) {
+              itemDisplayName += ` (${i18nInstance.t("dialog_equipped_label") || "Equipped"})`;
+            }
+            itemDiv.textContent = itemDisplayName;
+
+            const actionsContainer = document.createElement("div");
+            actionsContainer.className = "item-actions";
+
+            if (item.is_equipable) {
+              const equipButton = document.createElement("button");
+              if (isEquipped) {
+                equipButton.textContent = i18nInstance.t("dialog_unequip_button") || "Unequip";
+                equipButton.onclick = () => {
+                  playerInstance.unwieldItem(item).then(refreshDialogData).catch(console.error);
+                };
+              } else {
+                equipButton.textContent = i18nInstance.t("dialog_equip_button") || "Equip";
+                equipButton.onclick = () => {
+                  playerInstance.equipItem(item).then(refreshDialogData).catch(console.error);
+                };
+              }
+              actionsContainer.appendChild(equipButton);
+            }
+
             if (item.is_usable) {
-              actionPromise = item.use(playerInstance);
-            } else if (item.is_equipable) {
-              actionPromise = item.equip(playerInstance);
+              const useButton = document.createElement("button");
+              useButton.textContent = i18nInstance.t("dialog_use_button") || "Use";
+              useButton.onclick = () => {
+                playerInstance.useItem(item).then(refreshDialogData).catch(console.error);
+              };
+              actionsContainer.appendChild(useButton);
             }
-            if (actionPromise && typeof actionPromise.then === "function") {
-              actionPromise.then(refreshDialogData);
-            } else {
-              refreshDialogData();
-            }
-          };
-          inventoryPane.appendChild(itemDiv);
+
+            itemDiv.appendChild(actionsContainer);
+            mergedInventoryPane.appendChild(itemDiv);
+          }
         }
       }
 
@@ -472,40 +492,7 @@ export class FastComponent {
         );
       }
 
-      // 更新 Equipment 面板
-      equipmentPane.innerHTML = "";
-      const equipTitle = document.createElement("h3");
-      equipTitle.textContent =
-        i18nInstance.t("dialog_tab_equipment") || "Equipment";
-      equipmentPane.appendChild(equipTitle);
-
-      const playerEquipment = playerInstance.equipment;
-      let hasEquipment = false;
-      for (const slot in playerEquipment) {
-        if (playerEquipment[slot]) {
-          hasEquipment = true;
-          const item = playerEquipment[slot];
-          const itemDiv = document.createElement("div");
-          itemDiv.textContent = `${
-            i18nInstance.t("part_" + item.equip_slot) || item.equip_slot
-          }: ${
-            i18nInstance.t("item_" + item.item_id + "_name") || item.item_name
-          }`;
-          itemDiv.style.cursor = "pointer";
-          itemDiv.onclick = () => {
-            item.unwield(playerInstance).then(refreshDialogData);
-          };
-          equipmentPane.appendChild(itemDiv);
-        }
-      }
-
-      if (!hasEquipment) {
-        equipmentPane.appendChild(
-          document.createTextNode(
-            i18nInstance.t("dialog_no_equipment") || "No equipment."
-          )
-        );
-      }
+      // Equipment pane logic is now merged into the mergedInventoryPane
 
       // 自动激活第一个标签页
       if (

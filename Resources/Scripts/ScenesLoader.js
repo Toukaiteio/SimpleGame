@@ -11,13 +11,14 @@ export async function loadScenes() {
     const sceneFiles = [
         'GameHomePage.js',
         "GameStoryTeller.js",
+        "TutorialScene.js", // Added TutorialScene
         // "GameSaveList.js",
         // 可以在这里添加其他场景文件
     ];
     // 子场景文件的路径
     const subSceneFiles = [
         "BattleScene.js",
-        "ExampleScene.js",
+        // "ExampleScene.js", // Commented out ExampleScene as per instruction to remove/comment it
     ]
     try {
         // 动态导入每个场景文件

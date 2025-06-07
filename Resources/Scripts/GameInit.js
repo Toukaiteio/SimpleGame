@@ -64,6 +64,7 @@ i18n.loadLanguage("cn").then(() => {
       ui.getScene("GameStoryTeller").subScenes[i] = new subSceneList[i]();
     }
     // 显示游戏主页场景
-    ui.displayScene("GameHomePage");
+    // ui.displayScene("GameHomePage");
+    ui.displayScene("TutorialScene"); // Set TutorialScene as the starting scene
   });
 });
