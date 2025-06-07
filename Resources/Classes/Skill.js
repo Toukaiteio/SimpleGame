@@ -1,3 +1,7 @@
+/**
+ * Represents a skill that can be learned and used by characters (Player or Monster).
+ * Handles skill cooldowns and provides a base structure for specific skill implementations.
+ */
 export class Skill {
   /**
    * 技能类的构造函数
@@ -44,6 +48,7 @@ export class Skill {
       this.CDCounter += count;
       if (this.CDCounter >= this.skillCD) {
         this.isCoolingDown = false;
+        this.CDCounter = 0; // Reset counter when cooldown finishes
       }
     }
     return this;
@@ -53,28 +58,38 @@ export class Skill {
    * 子类可重写此方法以定义技能的效果。
    * @param {Player|Monster} source - 触发技能的来源对象（玩家或怪物）。
    * @param {Player|Monster} target - 技能的目标对象（玩家或怪物）。
-   * @returns {Promise<void>}
+   * @param {Battle} [battle] - (可选) 当前战斗的上下文，如果技能在战斗中使用。
+   * @returns {Promise<void> | GameEvent | object} - 可以返回Promise（用于异步操作）、GameEvent（用于集成到游戏事件系统）或简单对象。
+   *                                                如果返回GameEvent, 技能冷却将会在其 'after' 钩子中启动。
    */
-  onUse(source, target) {
+  onUse(source, target, battle) {
     // 子类应重写此方法以定义技能的效果；
     // 主动类技能主要在此编写代码
-    return new Promise((resolve) => {
-      resolve();
-    });
+    // Example: return game.eventWrapper(...); or return Promise.resolve();
+    return {}; // Default: synchronous action, no specific event returned
   }
 
   /**
    * 触发技能的函数。如果技能不处于冷却状态，则触发技能效果，并开始冷却计时。
-   * 如果技能处于冷却状态，则增加冷却计数器，当计数器达到冷却时间时，技能结束冷却状态。
    * @param {Player|Monster} source - 触发技能的来源对象（玩家或怪物）。
    * @param {Player|Monster} target - 技能的目标对象（玩家或怪物）。
-   * @returns {Promise<void>}
+   * @param {Battle} [battle] - (可选) 当前战斗的上下文。
+   * @returns {object} - 通常是 GameEvent 或一个空对象，取决于 onUse 的实现和冷却逻辑。
    */
-  triggerSkill(source, target,battle) {
+  triggerSkill(source, target, battle) {
     if (!this.isCoolingDown) {
-      const next = this.onUse(source, target);
+      // Note: For this skill to go on cooldown via the GameEvent mechanism,
+      // the onUse() method MUST return a GameEvent object (or any object with an addHook method).
+      // The cooldown will be initiated in the 'after' hook of that event.
+      // If onUse() performs a synchronous action and does not return such an object,
+      // it will NOT automatically go on cooldown through this path.
+      const next = this.onUse(source, target, battle); // Pass battle context
       if (next && next.addHook) {
-        next.data.battle = battle
+        if (next.data && battle) { // Ensure data object exists if we are to add battle to it
+             next.data.battle = battle;
+        } else if (battle) { // If no data object, create one
+            next.data = { battle };
+        }
         return next.addHook("after", async (self, game) => {
           this.isCoolingDown = true;
           this.CDCounter = 0;

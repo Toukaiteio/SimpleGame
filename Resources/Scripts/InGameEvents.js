@@ -1,4 +1,4 @@
-import { InGameEvent } from "../Classes/Game.js";
+import { InGameEvent } from "../Classes/InGameEvent.js";
 import { i18n } from "../Classes/I18n.js";
 import { Player } from "../Classes/Player.js";
 import {
@@ -6,7 +6,7 @@ import {
   getPlayerInstance,
   getGameInstance,
 } from "./Shared.js";
-import { Animations } from "../Classes/UI.js";
+import { Animations } from "../Classes/Animations.js";
 import { SeededRandom } from "../Classes/Random.js";
 import { Battle } from "../Classes/Battle.js";
 const writeH = Animations.writeWithHTML;

@@ -4,40 +4,59 @@ import {
   getMapInstance,
   getPlayerInstance,
 } from "../Scripts/Shared.js";
-import { log } from "./Game.js";
+import { log } from "./Utils.js"; // Corrected path for log
 import { i18n } from "./I18n.js";
-// 加入暴击、闪避等要素
 
+// TODO: Future enhancements could include critical hits, evasion, status effects, etc.
+
+/**
+ * Manages the state and flow of a battle between a player and a monster.
+ * Handles turns, actions (attack, skill use), and outcomes (victory, defeat).
+ */
 export class Battle {
-  static isUnderBattle = false;
-  static currentBattle = null;
+  static isUnderBattle = false; // Tracks if any battle is currently in progress globally.
+  static currentBattle = null;  // Static reference to the currently active battle instance.
   /**
    * 构造函数，初始化战斗。
    * @param {Player} player 玩家对象
    * @param {Monster} monster 怪物对象
    */
   constructor(player, monster) {
-    if (Battle.isUnderBattle) {
-      log("A battle is running.Cant create a new one!");
-      return null;
+    // Ensure player and monster are provided.
+    if (!player || !monster) {
+        log("Error: Player or Monster is undefined. Cannot create battle.");
+        // Battle.isUnderBattle should not be set if creation fails.
+        // Consider throwing an error for clearer failure indication.
+        // throw new Error("Player and Monster must be defined for battle.");
+        return null;
     }
+
+    if (Battle.isUnderBattle) {
+      log("A battle is already running. Cannot create a new one!");
+      return null; // Or perhaps return the existing battle instance: Battle.currentBattle
+    }
+
     Battle.isUnderBattle = true;
+    Battle.currentBattle = this; // Set static reference
+
     this.player = player;
     this.monster = monster;
-    this.turn = 0; // 初始化回合数
-    this.isBattleEnd = false;
-    this.currentBattle = this;
-    this.onEndBattleHooks = [];
-    this.onBattleBegin();
+    this.turn = 0; // Initialize turn count.
+    this.isBattleEnd = false; // Flag to indicate if the battle has concluded.
+    // this.currentBattle = this; // This instance is the current battle. Redundant with static.
+    this.onEndBattleHooks = []; // Callbacks to execute when the battle ends.
+
+    this.onBattleBegin(); // Initiate the battle sequence.
   }
 
   /**
-   * 战斗开始时调用的函数框架。
+   * Initiates the battle by creating and inserting an "onBattleBegin" event.
+   * This event typically handles setup like transitioning to the battle scene.
    */
   onBattleBegin() {
     const game = getGameInstance();
-    const player = this.player;
-    const monster = this.monster;
+    // const player = this.player; // Already available via this.player
+    // const monster = this.monster; // Already available via this.monster
     return game.insertEvent(
       game.eventWrapper(
         "onBattleBegin",
@@ -67,89 +86,114 @@ export class Battle {
         { battle: this },
         {
           after: async (self, game) => {
-            // 增加回合数
+            // Clear logs for the new turn first.
+            const currentUIScene = getUIInstance().getCurrentScene();
+            if (currentUIScene && currentUIScene.battleLogs && Array.isArray(currentUIScene.battleLogs)) {
+                currentUIScene.battleLogs = [];
+            }
+
+            // Increment turn counter
             self.data.battle.turn += 1;
-            // 玩家回合逻辑
-            self.data.battle
-              .onAttack(self.data.battle.player, self.data.battle.monster)
-              .addHook("after", async (self, game) => {
-                const current = getUIInstance().getCurrentScene();
-                if (current.battleLogs) {
-                  current.battleLogs.push(
-                    i18n.f("skill_use_text", {
-                      SkillName: i18n.t("skill_normal_hit"),
-                      DamageNumber: self.data.attackPower,
-                    })
-                  );
-                }
-              });
-            for (const i of self.data.battle.player.skills) {
-              if (!i.isCoolingDown) {
-                if (i.isAutoTrigger) {
-                  const next = i.triggerSkill(
-                    self.data.battle.player,
-                    self.data.battle.monster,
-                    self.data.battle
-                  );
-                  if (next.addHook) {
-                    next.addHook("after", async (self, game) => {
-                      i.coolDown();
-                    });
+            log(`Battle turn: ${self.data.battle.turn}`);
+
+            // --- Player's Turn ---
+            if (!self.data.battle.player.deadSymbol && !self.data.battle.isBattleEnd) {
+                // Player's basic attack
+                self.data.battle
+                  .onAttack(self.data.battle.player, self.data.battle.monster)
+                  .addHook("after", async (attackEvent, game) => { // Renamed self to attackEvent for clarity
+                    if (currentUIScene.battleLogs) {
+                      currentUIScene.battleLogs.push(
+                        i18n.f("skill_use_text", {
+                          SkillName: i18n.t("skill_normal_hit"),
+                          DamageNumber: attackEvent.data.attackPower, // Corrected: use attackEvent
+                        })
+                      );
+                    }
+                  });
+
+                // Player's skills
+                for (const skill of self.data.battle.player.skills) {
+                  if (!skill.isCoolingDown) {
+                    if (skill.isAutoTrigger) { // Consider if auto-trigger logic should be before or after main attack
+                      const skillEvent = skill.triggerSkill(
+                        self.data.battle.player,
+                        self.data.battle.monster,
+                        self.data.battle
+                      );
+                      if (skillEvent && skillEvent.addHook) {
+                        skillEvent.addHook("after", async () => { // Removed self, game from hook as they are not used
+                          skill.coolDown(); // This seems wrong, cooldown should be managed by skill.triggerSkill itself
+                        });
+                      }
+                    }
+                  } else {
+                    skill.coolDown(); // Reduce cooldown counter
                   }
                 }
-              } else {
-                i.coolDown();
-              }
             }
-            // 怪物回合逻辑
 
-            if (!self.data.battle.monster.aiOnBattle) {
-              // 若monster没有写aiOnBattle函数
-              self.data.battle.onAttack(
-                self.data.battle.monster,
-                self.data.battle.player
-              );
-              for (const i of self.data.battle.monster.skills) {
-                if (!i.isCoolingDown) {
-                  if (i.isAutoTrigger) {
-                    const next = i.triggerSkill(
-                      self.data.battle.monster,
-                      self.data.battle.player,
-                      self.data.battle
-                    );
-                    if (next.addHook) {
-                      next.addHook("after", async (self, game) => {
-                        i.coolDown();
-                      });
+            // CHECK IF MONSTER DIED FROM PLAYER'S TURN
+            if (self.data.battle.monster.status.hp <= 0 && !self.data.battle.monster.deadSymbol && !self.data.battle.isBattleEnd) {
+                self.data.battle.monster.deadSymbol = true;
+                self.data.battle.isBattleEnd = true; // Mark battle as ended
+                self.data.battle.onMonsterDied(self.data.battle.player, self.data.battle.monster);
+            }
+
+            // --- Monster's Turn ---
+            if (!self.data.battle.monster.deadSymbol && !self.data.battle.isBattleEnd) {
+                if (!self.data.battle.monster.aiOnBattle) {
+                  // Default AI: Monster's basic attack
+                  self.data.battle.onAttack(
+                    self.data.battle.monster,
+                    self.data.battle.player
+                  );
+                  // Default AI: Monster's skills
+                  for (const skill of self.data.battle.monster.skills) {
+                    if (!skill.isCoolingDown) {
+                      if (skill.isAutoTrigger) {
+                        const skillEvent = skill.triggerSkill(
+                          self.data.battle.monster,
+                          self.data.battle.player,
+                          self.data.battle
+                        );
+                        if (skillEvent && skillEvent.addHook) {
+                          skillEvent.addHook("after", async () => {
+                            skill.coolDown(); // Again, cooldown should be internal to skill
+                          });
+                        }
+                      }
+                    } else {
+                      skill.coolDown();
                     }
                   }
                 } else {
-                  i.coolDown();
+                  // Custom AI logic for monster's turn
+                  self.data.battle.monster.aiOnBattle(self.data.battle);
                 }
-              }
-            } else {
-              // aiOnBattle要处理怪物的攻击以及技能释放规律
-              self.data.battle.monster.aiOnBattle(self.data.battle); // 怪物攻击玩家
+
+                // CHECK IF PLAYER DIED FROM MONSTER'S TURN
+                if (self.data.battle.player.status.hp <= 0 && !self.data.battle.player.deadSymbol && !self.data.battle.isBattleEnd) {
+                    self.data.battle.player.deadSymbol = true;
+                    self.data.battle.isBattleEnd = true; // Mark battle as ended
+                    self.data.battle.onPlayerDied(self.data.battle.player, self.data.battle.monster);
+                }
             }
 
-            // 检查战斗是否结束
-            if (!self.data.battle.player.deadSymbol && !self.data.battle.monster.deadSymbol){
-              if (self.data.battle.player.status.hp <= 0) {
-                self.data.battle.player.deadSymbol = true;
-                self.data.battle.onPlayerDied(
-                  self.data.battle.player,
-                  self.data.battle.monster
-                );
-              } else if (self.data.battle.monster.status.hp <= 0) {
-                self.data.battle.monster.deadSymbol = true;
-                self.data.battle.onMonsterDied(
-                  self.data.battle.player,
-                  self.data.battle.monster
-                );
-              }
+            // Final check if battle hasn't been marked as ended by specific death handlers
+            // This can be simplified if the above checks correctly set isBattleEnd
+            if (!self.data.battle.isBattleEnd) {
+                if (self.data.battle.player.status.hp <= 0 && !self.data.battle.player.deadSymbol) {
+                    self.data.battle.player.deadSymbol = true;
+                    self.data.battle.isBattleEnd = true;
+                    self.data.battle.onPlayerDied(self.data.battle.player, self.data.battle.monster);
+                } else if (self.data.battle.monster.status.hp <= 0 && !self.data.battle.monster.deadSymbol) {
+                    self.data.battle.monster.deadSymbol = true;
+                    self.data.battle.isBattleEnd = true;
+                    self.data.battle.onMonsterDied(self.data.battle.player, self.data.battle.monster);
+                }
             }
-
-            getUIInstance().getCurrentScene().battleLogs = [];
+            // The line `getUIInstance().getCurrentScene().battleLogs = [];` was moved to the beginning of this 'after' block.
           },
         }
       )
@@ -169,13 +213,14 @@ export class Battle {
         { source, target },
         {
           after: async (self, game) => {
-            // 计算攻击力（这里可以根据source和target的属性实现具体的攻击逻辑）
+            // Simplified damage calculation: source's strength.
+            // TODO: Expand with weapon damage, skills, buffs, defense, etc.
             const attackPower = await self.data.source.getNextAttribute(
               "strength"
-            ); // 假设用力量属性攻击
+            );
             self.data.attackPower = attackPower;
-            // 调用 onDamaged 方法处理伤害
-            this.onDamaged(self.data.source, self.data.target, self);
+            // Delegate damage application and death checks to onDamaged.
+            this.onDamaged(self.data.source, self.data.target, self); // 'self' here is the onAttack event
           },
         }
       )
@@ -301,23 +346,32 @@ export class Battle {
         { player, monster, battle: this },
         {
           after: async (self, game) => {
-            getUIInstance()
-              .getCurrentScene()
-              .battleLogs.push(i18n.t("battle_info_player_died"));
+            // Log player death.
+            const currentUIScene = getUIInstance().getCurrentScene();
+            if (currentUIScene && currentUIScene.battleLogs) {
+                currentUIScene.battleLogs.push(i18n.t("battle_info_player_died"));
+            }
 
+            // Create a button to leave the battle.
             const leaveButton = document.createElement("button");
             leaveButton.innerText = i18n.t("battle_func_leave");
-            const current = getUIInstance().getCurrentScene();
-            current.interactiveElements = [];
-            leaveButton.onclick = () => {
-              self.data.player.deadSymbol = null;
-              self.data.player.status.hp = 1;
-              self.data.battle.endBattle();
-              current.removeInteractiveElement(leaveButton);
-            };
 
-            current.addInteractiveElement(leaveButton);
-            getUIInstance().update();
+            if (currentUIScene) { // Ensure currentUIScene is valid
+                currentUIScene.interactiveElements = []; // Clear existing buttons
+                leaveButton.onclick = () => {
+                  self.data.player.deadSymbol = null; // Reset dead symbol for potential future battles/revivals
+                  // Player is revived with 1 HP as per design.
+                  self.data.player.status.hp = 1;
+                  self.data.battle.endBattle();
+                  if (currentUIScene.removeInteractiveElement) { // Check if method exists
+                      currentUIScene.removeInteractiveElement(leaveButton);
+                  } else {
+                      leaveButton.remove(); // Fallback
+                  }
+                };
+                currentUIScene.addInteractiveElement(leaveButton);
+            }
+            getUIInstance().update(); // Refresh UI to show changes.
           },
         }
       )

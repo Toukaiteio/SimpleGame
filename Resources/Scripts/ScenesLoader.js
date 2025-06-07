@@ -1,4 +1,4 @@
-import { log } from '../Classes/Game.js';
+import { log } from '../Classes/Utils.js';
 import { subSceneList } from '../Scenes/GameStoryTeller.js';
 /**
  * 加载 ./Resources/Scenes/ 目录下的所有场景文件。

@@ -1,5 +1,7 @@
-import { Game, log } from "../Classes/Game.js";
-import { Animations, UI } from "../Classes/UI.js";
+import { Game } from "../Classes/Game.js";
+import { log } from "../Classes/Utils.js";
+import { Animations } from "../Classes/Animations.js";
+import { UI } from "../Classes/UI.js";
 import { Player } from "../Classes/Player.js";
 import { loadScenes } from "./ScenesLoader.js";
 import {
