@@ -4,13 +4,11 @@ import { Animations } from "../Classes/Animations.js";
 import { UI } from "../Classes/UI.js";
 import { Player } from "../Classes/Player.js";
 import { loadScenes } from "./ScenesLoader.js";
-import {
-  setGameInstance,
-  setUIInstance,
-  setPlayerInstance,
-} from "./Shared.js";
+import { setGameInstance, setUIInstance, setPlayerInstance } from "./Shared.js";
 import { subSceneList } from "../Scenes/GameStoryTeller.js";
 import { i18n } from "../Classes/I18n.js";
+import { getItemData } from "./Items/Index.js";
+import { itemManager } from "../Classes/ItemManager.js";
 // 获取游戏容器的DOM元素
 const gameContainer = document.getElementById("GameView");
 
@@ -53,6 +51,57 @@ i18n.loadLanguage("cn").then(() => {
     }
   });
 
+  // 物品使用事件
+  game.addGlobalTrigger("afterItemUse", "after", async (self, game) => {
+    const { item, target } = self.data;
+
+
+    if (ui.currentScene.playerBag) {
+      ui.currentScene.playerBag.updateSelf(target);
+    }
+
+    // 如果物品用完，从背包移除
+    if (item.use_time <= 0) {
+      const itemId = item.item_id;
+      if (target.inventory[itemId]) {
+        target.inventory[itemId] = target.inventory[itemId].filter(
+          (i) => i !== item
+        );
+        if (target.inventory[itemId].length === 0) {
+          delete target.inventory[itemId];
+        }
+      }
+    }
+  });
+
+  // 物品装备事件
+  game.addGlobalTrigger("afterItemEquip", "after", async (self, game) => {
+    const { item, target } = event;
+
+
+    if (ui.currentScene.playerBag) {
+      ui.currentScene.playerBag.updateSelf(target);
+    }
+    if (ui.currentScene.playerEquipment) {
+      ui.currentScene.playerEquipment.updateSelf(target);
+    }
+  });
+
+  // 物品卸下事件
+  game.addGlobalTrigger("afterItemUnequip", "after", async (self, game) => {
+    const { item, target } = event;
+
+
+    if (ui.currentScene.playerBag) {
+      ui.currentScene.playerBag.updateSelf(target);
+    }
+    if (ui.currentScene.playerEquipment) {
+      ui.currentScene.playerEquipment.updateSelf(target);
+    }
+  });
+
+  game.getItemData = getItemData;
+  itemManager.game = game;
   // 加载所有场景
   loadScenes().then((scenes) => {
     // 将场景存储在UI中

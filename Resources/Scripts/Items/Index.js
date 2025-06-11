@@ -397,7 +397,3 @@ export async function getItemData(itemId) {
   }
   return null;
 }
-
-// 注册物品数据获取函数
-const game = getGameInstance();
-game.getItemData = getItemData;

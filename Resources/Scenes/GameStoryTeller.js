@@ -552,8 +552,7 @@ class GameStoryTeller extends Scene {
               container,
               player.equipment,
               async (item) => {
-                await item.unwield(player);
-                container.parentElement.parentElement.refresh();
+                await this.unequipItem(item);
               }
             );
           },

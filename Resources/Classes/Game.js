@@ -157,6 +157,18 @@ export class Game {
   getGlobalTriggers() {
     return this.globalTriggers;
   }
+  /**
+   * 快速触发一个仅传参的事件
+   * @param {string} eventType - 事件类型
+   * @param {Object} data - 事件参数
+   * @returns {Promise<GameEvent>} - 被触发的事件对象
+   */
+  async triggerEvent(eventType, data = {}) {
+    const event = this.eventWrapper(eventType, data);
+    this.applyGlobalTriggers(event);
+    await this.executeEvent(event);
+    return event;
+  }
 
   /**
    * 为新创建的事件应用全局触发器
