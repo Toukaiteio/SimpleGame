@@ -1,7 +1,7 @@
-import { i18n } from "./I18n.js"; // Added for the new dialog method
+import { i18n } from "./I18n.js";
 
 export class FastComponent {
-  /**
+    /**
    * 创建一个按钮样式的单选框组
    * @param {string} title 标题
    * @param {Array<{content: string, onSelect: function(FastComponent): void, onCancel: function(FastComponent): void}>} choices 选项数组
@@ -303,226 +303,140 @@ export class FastComponent {
     return wrapper;
   }
 
-  // New Static Method
-  static createPlayerInfoDialog(playerInstance, i18nInstance) {
-    // Renamed i18n to i18nInstance to avoid conflict
+  /**
+   * 创建一个通用的对话框
+   * @param {Object} options - 对话框配置选项
+   * @param {string} options.title - 对话框标题
+   * @param {Function} options.onClose - 关闭回调
+   * @param {Function} options.onRefresh - 刷新回调
+   * @param {Array<{id: string, label: string, content: Function}>} options.tabs - 标签页配置
+   * @returns {HTMLElement} 对话框元素
+   */
+  static createDialog(options) {
+    const {
+      title = "",
+      onClose = () => {},
+      onRefresh = () => {},
+      tabs = []
+    } = options;
+
+    // 创建对话框容器
     const dialogOverlay = document.createElement("div");
-    dialogOverlay.className = "player-info-dialog-overlay";
-
+    dialogOverlay.className = "dialog-overlay";
+    
     const dialogContent = document.createElement("div");
-    dialogContent.className = "player-info-dialog-content";
+    dialogContent.className = "dialog-content";
 
+    // 创建标题栏
+    const titleBar = document.createElement("div");
+    titleBar.className = "dialog-title-bar";
+    
+    const titleText = document.createElement("h2");
+    titleText.textContent = title;
+    titleBar.appendChild(titleText);
+    
     const closeButton = document.createElement("button");
-    closeButton.textContent = i18nInstance.t("dialog_close_button") || "Close";
-    closeButton.onclick = () => dialogOverlay.remove();
-    dialogContent.appendChild(closeButton);
+    closeButton.className = "dialog-close-button";
+    closeButton.innerHTML = "×";
+    closeButton.onclick = () => {
+      onClose();
+      dialogOverlay.remove();
+    };
+    titleBar.appendChild(closeButton);
+    
+    dialogContent.appendChild(titleBar);
 
-    const tabsContainer = document.createElement("div");
-    tabsContainer.className = "dialog-tabs";
+    // 创建标签页
+    if (tabs.length > 0) {
+      const tabsContainer = document.createElement("div");
+      tabsContainer.className = "dialog-tabs";
 
-    const panesContainer = document.createElement("div");
-    panesContainer.className = "dialog-panes";
+      const panesContainer = document.createElement("div");
+      panesContainer.className = "dialog-panes";
 
-    const tabs = [
-      {
-        id: "inventory",
-        label: i18nInstance.t("dialog_tab_inventory") || "Inventory",
-      },
-      {
-        id: "attributes",
-        label: i18nInstance.t("dialog_tab_attributes") || "Attributes",
-      },
-      {
-        id: "equipment",
-        label: i18nInstance.t("dialog_tab_equipment") || "Equipment",
-      },
-    ];
-    const pannels = {};
-    tabs.forEach((tabInfo) => {
-      const tabButton = document.createElement("button");
-      tabButton.textContent = tabInfo.label;
-      tabButton.className = "dialog-tab-button";
-      tabButton.onclick = () => {
-        tabsContainer.querySelectorAll(".dialog-tab-button").forEach((btn) => {
-          btn.style.backgroundColor = "transparent"; // Reset style
-          btn.classList.remove("active");
-        });
-        panesContainer
-          .querySelectorAll(".dialog-pane")
-          .forEach((pane) => (pane.style.display = "none"));
-        tabButton.classList.add("active");
-        document.getElementById(tabInfo.id + "-pane").style.display = "block";
-      };
-      tabsContainer.appendChild(tabButton);
+      // 存储所有面板的引用，方便刷新
+      const panes = {};
 
-      const pane = document.createElement("div");
-      pane.id = tabInfo.id + "-pane";
-      pane.className = "dialog-pane";
-      pane.style.display = "none";
-      pannels[tabInfo.id] = {
-        pane: pane,
-        button: tabButton,
-      };
-      panesContainer.appendChild(pane);
-    });
+      tabs.forEach((tabInfo) => {
+        // 创建标签按钮
+        const tabButton = document.createElement("button");
+        tabButton.textContent = tabInfo.label;
+        tabButton.className = "dialog-tab-button";
+        
+        // 创建面板容器
+        const pane = document.createElement("div");
+        pane.id = `${tabInfo.id}-pane`;
+        pane.className = "dialog-pane";
+        pane.style.display = "none";
+        
+        // 初始化面板内容
+        tabInfo.content(pane);
+        
+        // 存储面板引用
+        panes[tabInfo.id] = pane;
+        
+        // 标签切换事件
+        tabButton.onclick = () => {
+          // 更新标签状态
+          tabsContainer.querySelectorAll(".dialog-tab-button").forEach(btn => {
+            btn.classList.remove("active");
+          });
+          tabButton.classList.add("active");
+          
+          // 更新面板显示
+          panesContainer.querySelectorAll(".dialog-pane").forEach(p => {
+            p.style.display = "none";
+          });
+          pane.style.display = "block";
+        };
+        
+        tabsContainer.appendChild(tabButton);
+        panesContainer.appendChild(pane);
+      });
 
-    dialogContent.appendChild(tabsContainer);
-    dialogContent.appendChild(panesContainer);
-    dialogOverlay.appendChild(dialogContent);
+      dialogContent.appendChild(tabsContainer);
+      dialogContent.appendChild(panesContainer);
 
-    const refreshDialogData = async () => {
-      // Arrow function to capture 'this' context and local variables
-      const inventoryPane = pannels['inventory']['pane'];
-      const attributesPane = pannels['attributes']['pane'];
-      const equipmentPane = pannels['equipment']['pane'];
-      // 更新 Inventory 面板
-      inventoryPane.innerHTML = "";
-      const invTitle = document.createElement("h3");
-      invTitle.textContent =
-        i18nInstance.t("dialog_tab_inventory") || "Inventory";
-      inventoryPane.appendChild(invTitle);
-
-      const coinsDisplay = document.createElement("div");
-      coinsDisplay.textContent = `${
-        i18nInstance.t("info_status_coin") || "Coins"
-      }: ${playerInstance.carrying_coins}`;
-      inventoryPane.appendChild(coinsDisplay);
-
-      const playerInventory = playerInstance.inventory;
-      for (const itemId in playerInventory) {
-        const itemArray = playerInventory[itemId];
-        if (itemArray && itemArray.length > 0) {
-          const item = itemArray[0];
-          const itemCount = item.use_time;
-          if (itemCount <= 0) continue;
-
-          const itemDiv = document.createElement("div");
-          itemDiv.textContent = `${
-            i18nInstance.t("item_" + item.item_id + "_name") || item.item_name
-          } x ${itemCount}`;
-          itemDiv.style.cursor = "pointer";
-          itemDiv.onclick = () => {
-            let actionPromise;
-            if (item.is_usable) {
-              actionPromise = item.use(playerInstance);
-            } else if (item.is_equipable) {
-              actionPromise = item.equip(playerInstance);
-            }
-            if (actionPromise && typeof actionPromise.then === "function") {
-              actionPromise.then(refreshDialogData);
-            } else {
-              refreshDialogData();
-            }
-          };
-          inventoryPane.appendChild(itemDiv);
-        }
-      }
-
-      // 更新 Attributes 面板
-      attributesPane.innerHTML = "";
-      const attrTitle = document.createElement("h3");
-      attrTitle.textContent =
-        i18nInstance.t("dialog_tab_attributes") || "Attributes";
-      attributesPane.appendChild(attrTitle);
-
-      const playerStatus = playerInstance.status;
-      for (const attrKey in playerStatus) {
-        if (
-          attrKey === "buffList" ||
-          attrKey === "skillPoints" ||
-          attrKey.startsWith("max") ||
-          !playerStatus.hasOwnProperty(attrKey)
-        )
-          continue;
-
-        const attrValue = await playerInstance.getNextAttribute(attrKey);
-        const attrDiv = document.createElement("div");
-        let attrText = `${
-          i18nInstance.t("status_" + attrKey) || attrKey
-        }: ${attrValue}`;
-
-        const maxAttrKey =
-          "max" + attrKey.charAt(0).toUpperCase() + attrKey.slice(1);
-        if (playerStatus.hasOwnProperty(maxAttrKey)) {
-          attrText += ` / ${await playerInstance.getNextAttribute(maxAttrKey)}`;
-        }
-
-        attrDiv.textContent = attrText;
-        attributesPane.appendChild(attrDiv);
-      }
-
-      const buffsTitle = document.createElement("h4");
-      buffsTitle.textContent =
-        i18nInstance.t("dialog_buffs_title") || "Active Buffs";
-      attributesPane.appendChild(buffsTitle);
-
-      if (playerStatus.buffList && playerStatus.buffList.length > 0) {
-        playerStatus.buffList.forEach((buff) => {
-          const buffDiv = document.createElement("div");
-          buffDiv.textContent = `${
-            i18nInstance.t("buff_" + buff.buff + "_name") || buff.buff
-          }: ${buff.remainRound} rounds`;
-          attributesPane.appendChild(buffDiv);
-        });
-      } else {
-        attributesPane.appendChild(
-          document.createTextNode(
-            i18nInstance.t("dialog_no_buffs") || "No active buffs."
-          )
-        );
-      }
-
-      // 更新 Equipment 面板
-      equipmentPane.innerHTML = "";
-      const equipTitle = document.createElement("h3");
-      equipTitle.textContent =
-        i18nInstance.t("dialog_tab_equipment") || "Equipment";
-      equipmentPane.appendChild(equipTitle);
-
-      const playerEquipment = playerInstance.equipment;
-      let hasEquipment = false;
-      for (const slot in playerEquipment) {
-        if (playerEquipment[slot]) {
-          hasEquipment = true;
-          const item = playerEquipment[slot];
-          const itemDiv = document.createElement("div");
-          itemDiv.textContent = `${
-            i18nInstance.t("part_" + item.equip_slot) || item.equip_slot
-          }: ${
-            i18nInstance.t("item_" + item.item_id + "_name") || item.item_name
-          }`;
-          itemDiv.style.cursor = "pointer";
-          itemDiv.onclick = () => {
-            item.unwield(playerInstance).then(refreshDialogData);
-          };
-          equipmentPane.appendChild(itemDiv);
-        }
-      }
-
-      if (!hasEquipment) {
-        equipmentPane.appendChild(
-          document.createTextNode(
-            i18nInstance.t("dialog_no_equipment") || "No equipment."
-          )
-        );
-      }
-
-      // 自动激活第一个标签页
-      if (
-        !tabsContainer.querySelector(".dialog-tab-button.active") &&
-        tabsContainer.firstChild
-      ) {
+      // 默认选中第一个标签
+      if (tabsContainer.firstChild) {
         tabsContainer.firstChild.click();
       }
-    };
 
-    refreshDialogData();
+      // 添加刷新方法
+      dialogContent.refresh = () => {
+        tabs.forEach(tabInfo => {
+          if (panes[tabInfo.id]) {
+            panes[tabInfo.id].innerHTML = '';
+            tabInfo.content(panes[tabInfo.id]);
+          }
+        });
+        onRefresh();
+      };
+    }
 
+    dialogOverlay.appendChild(dialogContent);
+
+    // 点击遮罩层关闭对话框
     dialogOverlay.onclick = (event) => {
       if (event.target === dialogOverlay) {
+        onClose();
         dialogOverlay.remove();
       }
     };
+
+    // 添加键盘事件监听
+    const handleKeyPress = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+        dialogOverlay.remove();
+      }
+    };
+    document.addEventListener("keydown", handleKeyPress);
+
+    // 清理事件监听
+    dialogOverlay.addEventListener("remove", () => {
+      document.removeEventListener("keydown", handleKeyPress);
+    });
 
     return dialogOverlay;
   }

@@ -58,8 +58,6 @@ export function log(...logText) {
 
   // 格式化输出日志
   console.log(
-    `[${functionName}(${fileInfo})][${currentTime}]: ${logText.join(
-      " "
-    )}`
+    `[${functionName}(${fileInfo})][${currentTime}]:`,...logText
   );
 }

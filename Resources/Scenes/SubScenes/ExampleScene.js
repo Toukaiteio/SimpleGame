@@ -1,119 +1,152 @@
-import { SubScene } from '../../Classes/SubScene.js';
-import { i18n } from '../../Classes/I18n.js';
-import { getPlayerInstance, getStoryTellerElement, getGameInstance } from '../../Scripts/Shared.js';
-import { InGameEvent } from '../../Classes/InGameEvent.js';
+import { SubScene } from "../../Classes/SubScene.js";
+import { i18n } from "../../Classes/I18n.js";
+import {
+  getPlayerInstance,
+  getStoryTellerElement,
+  getGameInstance,
+} from "../../Scripts/Shared.js";
+import { InGameEvent } from "../../Classes/InGameEvent.js";
+import { Player } from "../../Classes/Player.js";
+import { EventPriority } from "../../Classes/GameEvent.js";
 
 class ExampleScene extends SubScene {
   constructor() {
-    super('ExampleScene'); // Unique ID for this sub-scene
-
-    // --- Text Content ---
-    // This is the main descriptive text for the scene.
-    // You can use i18n.t() for internationalization.
-    this.textContent = i18n.t('subscene_desc_ExampleScene');
-
-    // --- Interactive Elements ---
-    // Interactive elements are usually added in onRendered or dynamically based on game state.
-    // Here, we'll add a static text display area.
-    // The getStoryTellerElement() is a common place to display narrative text and choices.
+    super("ExampleScene");
+    this.textContent = i18n.t("subscene_desc_ExampleScene");
     this.addInteractiveElement(getStoryTellerElement());
   }
 
-  // --- Scene Lifecycle Methods ---
-
   /**
-   * beforeRendered: Called before the scene's content is drawn.
-   * Use this to prepare dynamic content that depends on the game state
-   * but doesn't involve creating interactive choices yet.
+   * 在场景渲染前准备内容
    */
   beforeRendered() {
-    // Clear previous content from the story teller element
-    getStoryTellerElement().innerHTML = '';
-
-    // Example: Displaying initial scene text.
-    // This could also be directly in textContent if it's static.
-    const initialText = document.createElement('p');
-    initialText.innerHTML = i18n.t('example_scene_initial_text');
+    getStoryTellerElement().innerHTML = "";
+    
+    const initialText = document.createElement("p");
+    initialText.innerHTML = i18n.t("example_scene_initial_text");
     getStoryTellerElement().appendChild(initialText);
-
-    getStoryTellerElement().appendChild(document.createElement('hr'));
+    getStoryTellerElement().appendChild(document.createElement("hr"));
   }
 
   /**
-   * onRendered: Called after the scene's main structure is in place.
-   * This is a good place to add interactive elements like buttons or choices,
-   * as the base elements they attach to will exist.
+   * 创建场景选项事件
+   * @private
+   * @returns {InGameEvent}
    */
-  onRendered() {
-    const game = getGameInstance();
-    const player = getPlayerInstance();
-
-    // Example: Creating an InGameEvent for choices
-    // InGameEvent is used to present options to the player.
+  createSceneChoiceEvent() {
     const choices = {
-      'example_scene_choice_1_text': () => {
-        // Action for choice 1
-        const feedbackText = document.createElement('p');
-        feedbackText.innerHTML = i18n.t('example_scene_choice_1_feedback');
+      example_scene_choice_1_text: async () => {
+        const feedbackText = document.createElement("p");
+        feedbackText.innerHTML = i18n.t("example_scene_choice_1_feedback");
         getStoryTellerElement().appendChild(feedbackText);
-        // You could trigger another event, move to another scene, etc.
-        // player.moveTo('#AnotherScene');
       },
-      'example_scene_choice_2_text': () => {
-        // Action for choice 2
-        const feedbackText = document.createElement('p');
-        feedbackText.innerHTML = i18n.t('example_scene_choice_2_feedback');
+      example_scene_choice_2_text: async () => {
+        const feedbackText = document.createElement("p");
+        feedbackText.innerHTML = i18n.t("example_scene_choice_2_feedback");
         getStoryTellerElement().appendChild(feedbackText);
+      },
+    };
+
+    const writer = (key) => {
+      switch (key) {
+        case "name":
+          return i18n.t("example_scene_event_name");
+        case "content":
+          return i18n.t("example_scene_event_content");
+        default:
+          return i18n.t(key);
       }
     };
 
-    // The InGameEvent requires a 'Writer' function.
-    // This function is responsible for how the event's text and options are presented.
-    // For simple cases, it might just return the i18n translated string.
-    const writer = (key) => {
-      // 'name' and 'content' are special keys used by InGameEvent.
-      // Others are the keys from your 'choices' object.
-      if (key === 'name') return i18n.t('example_scene_event_name');
-      if (key === 'content') return i18n.t('example_scene_event_content');
-      return i18n.t(key); // For choice texts
-    };
-
     const event = new InGameEvent(
-      'ExampleSceneChoice', // Event type
-      choices,             // Options object
-      writer               // Writer function
+      "ExampleSceneChoice",
+      choices,
+      writer
     );
 
-    game.createEvent(event).addHook('after', async () => {
-      // After the player makes a choice and the choice's callback is executed,
-      // you might want to add a button to proceed or move to another scene.
-      const continueButton = document.createElement('button');
-      continueButton.innerHTML = i18n.t('example_scene_continue_button');
-      continueButton.onclick = () => {
-        // Example: Move to another part of the story or a different scene
-        // player.moveTo('#SomeOtherScene');
-        // For this example, we'll just clear the button.
-        continueButton.remove();
-        // Potentially clear other feedback text as well or set up a new event.
-        this.beforeRendered(); // Reset to initial state for demo
-        this.onRendered(); // Present choices again for demo
-      };
-      getStoryTellerElement().appendChild(continueButton);
-    });
+    // 设置事件属性
+    event
+      .setAllowInsertion(true)  // 允许其他事件插入
+      .setPriority(EventPriority.NORMAL)  // 设置正常优先级
+      .setTimeout(180000);  // 设置3分钟超时
+
+    return event;
   }
 
   /**
-   * updateSelf: Called when the scene needs to refresh its content.
-   * This is often triggered by external changes or if the scene itself
-   * determines it needs an update.
+   * 创建继续按钮
+   * @private
+   * @returns {HTMLButtonElement}
+   */
+  createContinueButton() {
+    const continueButton = document.createElement("button");
+    continueButton.innerHTML = i18n.t("example_scene_continue_button");
+    continueButton.onclick = () => {
+      continueButton.remove();
+      const player = getPlayerInstance();
+      player.moveTo("#ExampleScene");
+    };
+    return continueButton;
+  }
+
+  /**
+   * 处理玩家初次进入场景的物品发放
+   * @private
+   */
+  handleFirstTimeItems() {
+    const player = getPlayerInstance();
+    if (!player.getFlag("gived_weapon")) {
+      player.giveItem("broken_hero_sword");
+      player.setFlag("gived_weapon", true);
+    }
+  }
+
+  /**
+   * 场景渲染后的处理
+   */
+  onRendered() {
+    const game = getGameInstance();
+    
+    // 处理首次进入的物品发放
+    this.handleFirstTimeItems();
+
+    // 创建主选项事件
+    const choiceEvent = this.createSceneChoiceEvent();
+
+    // 添加事件完成后的处理
+    choiceEvent.addHook("after", async () => {
+      const continueButton = this.createContinueButton();
+      getStoryTellerElement().appendChild(continueButton);
+    });
+
+    // 添加事件超时处理
+    choiceEvent.addHook("before", async () => {
+      const timeoutWarning = document.createElement("p");
+      timeoutWarning.className = "timeout-warning";
+      timeoutWarning.style.display = "none";
+      timeoutWarning.innerHTML = i18n.t("example_scene_timeout_warning");
+      getStoryTellerElement().appendChild(timeoutWarning);
+
+      // 在即将超时时显示警告
+      setTimeout(() => {
+        timeoutWarning.style.display = "block";
+      }, 150000); // 2分30秒后显示警告
+    });
+
+    // 创建事件
+    game.createEvent(choiceEvent);
+  }
+
+  /**
+   * 更新场景
    */
   updateSelf() {
-    // Add any logic needed to update the scene's state or visuals.
-    // For this example, it's simple, but complex scenes might re-evaluate
-    // conditions or fetch new data here.
-    super.updateSelf(); // Calls the base class method
+    super.updateSelf();
+    
+    // 移除任何过时的警告信息
+    const warnings = getStoryTellerElement().querySelectorAll('.timeout-warning');
+    warnings.forEach(warning => warning.remove());
   }
 }
 
-// Export the class to make it available for the ScenesLoader
 export default ExampleScene;

@@ -8,6 +8,8 @@ import {
 import { i18n } from "./I18n.js";
 import GameStoryTeller from "../Scenes/GameStoryTeller.js";
 import { Monster } from './Monster.js';
+import { itemManager } from "./ItemManager.js";
+import { Item } from "./Item.js";
 
 /**
  * Represents the player character, extending the Monster class.
@@ -18,12 +20,12 @@ export class Player extends Monster {
   /**
    * Constructs a Player instance.
    * @param {object} [status={}] Initial status attributes for the player.
-   * @param {string} [initialLocation="#UnknownForest"] The player's starting location ID.
+   * @param {string} [initialLocation="#ExampleScene"] The player's starting location ID.
    * @param {number} [initialCoins=0] The player's starting amount of coins.
    */
   constructor(
     status = {},
-    initialLocation = "#UnknownForest",
+    initialLocation = "#ExampleScene",
     initialCoins = 0
   ) {
     // Call Monster constructor with player-specific name and undefined for monsterDrops.
@@ -340,6 +342,152 @@ export class Player extends Monster {
   }
 
   /**
+   * 添加物品到玩家背包
+   * @param {Item|string} item 物品实例或物品ID
+   * @param {number} amount 数量
+   * @returns {Promise} 添加物品的结果
+   */
+  async addItem(item, amount = 1) {
+    // 如果传入的是物品ID，先创建物品实例
+    if (typeof item === 'string') {
+      item = await Item.create(item);
+    }
+    
+    return itemManager.addItem(item, this, amount);
+  }
+
+  /**
+   * 从玩家背包移除物品
+   * @param {Item|string} item 物品实例或物品ID
+   * @param {number} amount 数量
+   * @returns {Promise} 移除物品的结果
+   */
+  async removeItem(item, amount = 1) {
+    // 如果传入的是物品ID，查找背包中的物品
+    if (typeof item === 'string') {
+      if (this.inventory[item] && this.inventory[item].length > 0) {
+        item = this.inventory[item][0];
+      } else {
+        return false;
+      }
+    }
+    
+    return itemManager.removeItem(item, this, amount);
+  }
+
+  /**
+   * 使用物品
+   * @param {Item|string} item 物品实例或物品ID
+   * @returns {Promise} 使用物品的结果
+   */
+  async useItem(item) {
+    // 如果传入的是物品ID，查找背包中的物品
+    if (typeof item === 'string') {
+      if (this.inventory[item] && this.inventory[item].length > 0) {
+        item = this.inventory[item][0];
+      } else {
+        return false;
+      }
+    }
+    
+    return itemManager.useItem(item, this);
+  }
+
+  /**
+   * 装备物品
+   * @param {Item|string} item 物品实例或物品ID
+   * @returns {Promise} 装备物品的结果
+   */
+  async equipItem(item) {
+    // 如果传入的是物品ID，查找背包中的物品
+    if (typeof item === 'string') {
+      if (this.inventory[item] && this.inventory[item].length > 0) {
+        item = this.inventory[item][0];
+      } else {
+        return false;
+      }
+    }
+    
+    return itemManager.equipItem(item, this);
+  }
+
+  /**
+   * 卸下装备
+   * @param {Item|string} item 物品实例或物品ID或装备槽位
+   * @returns {Promise} 卸下装备的结果
+   */
+  async unequipItem(item) {
+    // 如果传入的是装备槽位，查找该槽位的装备
+    if (typeof item === 'string' && this.equipment[item]) {
+      item = this.equipment[item];
+    } else if (typeof item === 'string' && this.inventory[item] && this.inventory[item].length > 0) {
+      // 如果传入的是物品ID，查找背包中的物品
+      item = this.inventory[item][0];
+    }
+    
+    return itemManager.unequipItem(item, this);
+  }
+
+  /**
+   * 获取物品列表
+   * @param {string} [filter] 过滤条件（可选）
+   * @returns {Array<Item>} 物品列表
+   */
+  getItems(filter) {
+    const items = [];
+    
+    Object.keys(this.inventory).forEach(itemId => {
+      this.inventory[itemId].forEach(item => {
+        if (!filter || 
+            (filter === 'usable' && item.is_usable) || 
+            (filter === 'equipable' && item.is_equipable) ||
+            (filter === 'enhanceable' && item.is_enhanceable) ||
+            (filter === 'tradeable' && item.is_tradeable)) {
+          items.push(item);
+        }
+      });
+    });
+    
+    return items;
+  }
+
+  /**
+   * 获取已装备物品列表
+   * @returns {Object} 已装备物品列表，按槽位分类
+   */
+  getEquippedItems() {
+    return this.equipment;
+  }
+
+  /**
+   * 获取特定槽位的装备
+   * @param {string} slot 装备槽位
+   * @returns {Item|null} 装备物品或null
+   */
+  getEquipment(slot) {
+    return this.equipment[slot] || null;
+  }
+
+  /**
+   * 检查是否拥有特定物品
+   * @param {string} itemId 物品ID
+   * @param {number} [amount=1] 数量
+   * @returns {boolean} 是否拥有
+   */
+  hasItem(itemId, amount = 1) {
+    if (!this.inventory[itemId]) {
+      return false;
+    }
+    
+    let totalUseTime = 0;
+    this.inventory[itemId].forEach(item => {
+      totalUseTime += item.use_time;
+    });
+    
+    return totalUseTime >= amount;
+  }
+
+  /**
    * Serializes the player's current state to a JSON string for saving.
    * @param {boolean} [isNew=false] If true, generates JSON for a new game state (e.g., default skills).
    * @returns {GameEvent} A game event whose `data.result` will hold the JSON string.
@@ -364,7 +512,8 @@ export class Player extends Monster {
                 return entity.inventory[id].map((item) => {
                   return {
                     id: item.item_id,
-                    use_time: item.use_time, // Assuming use_time is stack count or uses remaining
+                    use_time: item.use_time,
+                    item_status: item.item_status
                   };
                 });
               }).flat(), // Flatten the array of arrays if inventory structure results in it
@@ -373,6 +522,7 @@ export class Player extends Monster {
                   return {
                     id: entity.equipment[slot].item_id,
                     slot: slot,
+                    item_status: entity.equipment[slot].item_status
                   };
                 }
                 return null; // Ensure consistent return type
@@ -435,31 +585,50 @@ export class Player extends Monster {
 
             if (savedState.hasOwnProperty("inventory")) {
               entity.inventory = {}; // Clear existing inventory
-              // Ensure `savedState.inventory` is an array of items, not array of arrays
-              savedState.inventory.forEach((itemData) => {
-                 if (item_list[itemData.id]) {
-                    const itemInstance = new item_list[itemData.id]();
-                    itemInstance.use_time = itemData.use_time;
-                    entity.inventory[itemData.id] = [itemInstance]; // Assuming inventory stores array of items per ID
-                 }
-              });
+              // 使用新的Item.create方法创建物品
+              for (const itemData of savedState.inventory) {
+                const itemInstance = await Item.create(itemData.id);
+                if (itemInstance) {
+                  itemInstance.use_time = itemData.use_time;
+                  if (itemData.item_status) {
+                    itemInstance.item_status = itemData.item_status;
+                  }
+                  
+                  if (!entity.inventory[itemData.id]) {
+                    entity.inventory[itemData.id] = [];
+                  }
+                  entity.inventory[itemData.id].push(itemInstance);
+                }
+              }
             }
 
             if (savedState.hasOwnProperty("equipment")) {
               entity.equipment = {}; // Clear existing equipment
-              savedState.equipment.forEach((equipData) => {
-                if (equipData && entity.inventory[equipData.id] && entity.inventory[equipData.id][0]) {
-                  const itemInstance = entity.inventory[equipData.id][0];
-                  // Ensure item is equipable and slot matches, then equip
-                  if (itemInstance.is_equipable && itemInstance.equip_slot === equipData.slot) {
-                     entity.equipment[equipData.slot] = itemInstance;
-                     // Note: Item is already in inventory, equipping should not add it again.
-                     // `costUseTime(1)` might be relevant if equipping consumes one from a stack.
+              entity.equipmentBonus = {}; // Clear equipment bonuses
+              
+              // 先加载所有物品到背包
+              if (savedState.hasOwnProperty("inventory")) {
+                // 使用新的装备系统装备物品
+                for (const equipData of savedState.equipment) {
+                  if (equipData && entity.inventory[equipData.id] && entity.inventory[equipData.id].length > 0) {
+                    const itemToEquip = entity.inventory[equipData.id].find(item => 
+                      item.is_equipable && item.equip_slot === equipData.slot
+                    );
+                    
+                    if (itemToEquip) {
+                      entity.equipment[equipData.slot] = itemToEquip;
+                      entity.equipmentBonus[equipData.slot] = {
+                        equipped: true,
+                        ...(equipData.item_status || itemToEquip.item_status)
+                      };
+                    }
                   }
                 }
-              });
+              }
+            } else if (savedState.hasOwnProperty("equipmentBonus")) {
+              entity.equipmentBonus = savedState.equipmentBonus;
             }
-            if (savedState.hasOwnProperty("equipmentBonus")) entity.equipmentBonus = savedState.equipmentBonus;
+            
             if (savedState.hasOwnProperty("flags")) entity.flags = savedState.flags;
             if (savedState.hasOwnProperty("currentLocation")) entity.currentLocation = savedState.currentLocation;
             if (savedState.hasOwnProperty("carrying_coins")) entity.carrying_coins = savedState.carrying_coins;

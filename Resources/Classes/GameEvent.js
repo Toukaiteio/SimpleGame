@@ -1,74 +1,107 @@
-import { HookContext, HookList } from "../Scripts/HookRegister.js";
-import {
-  getStoryTellerElement,
-  getUIInstance,
-  getPlayerInstance,
-} from "../Scripts/Shared.js";
-import { i18n } from "./I18n.js";
-import { Animations } from "./Animations.js";
-import { SubScene } from "./SubScene.js";
-import { UI } from "./UI.js";
 /**
- * 事件类
- *
- * 一个游戏事件的框架
- *
- * @class GameEvent
+ * 事件状态枚举
+ * @enum {string}
+ */
+export const EventState = {
+  CREATED: "created",
+  RUNNING: "running",
+  PAUSED: "paused",
+  COMPLETED: "completed",
+  CANCELLED: "cancelled",
+};
+
+/**
+ * 事件优先级枚举
+ * @enum {number}
+ */
+export const EventPriority = {
+  LOW: 0,
+  NORMAL: 1,
+  HIGH: 2,
+  CRITICAL: 3,
+};
+
+/**
+ * 游戏事件基类
  */
 export class GameEvent {
-  insertRequest = null;
   /**
-   * 构造函数，初始化Event类的属性
-   * @param {string} type - 事件的类型（如"TimeUpdate"）
-   * @param {Object} [data={}] - 事件相关的数据
-   * @param {Object} [callbacks={ before:async ()=>{return;},during:async ()=>{return;},after:async ()=>{return;}}]
+   * @param {string} type - 事件类型
+   * @param {Object} data - 事件数据
+   * @param {Object} callbacks - 事件回调
+   * @param {Array<string>} timings - 事件时机
    */
   constructor(
     type,
     data = {},
-    callbacks = {
-      before: async () => {
-        return;
-      },
-      during: async () => {
-        return;
-      },
-      after: async () => {
-        return;
-      },
-    },
-    timings = ["before", "during", "after"]
+    callbacks = {},
+    timings = ["before", "during", "after", "final"]
   ) {
     this.type = type;
     this.data = data;
+    this.state = EventState.CREATED;
+    this.priority = EventPriority.NORMAL;
+    this.allowInsertion = true;
+    this.timeout = 30000; // 默认30秒超时
+
+    // 事件关系
     this.parentEvent = null;
     this.childEvents = [];
-    this.hooks = {
-      before: [],
-      during: [],
-      after: [],
-    };
-    this.paused = false;
-    this.timings = timings;
-    this.callbacks = callbacks;
-    /**
-     * 当前事件是否已取消
-     * @type {boolean}
-     */
-    this.isCancelled = false;
-    this.isFinished = false;
-    /**
-     * 当前执行阶段（before, during, after）
-     * @type {string | null}
-     */
-    this.currentPhase = null;
+    this.deferredEvents = []; // 替代原来的insertQueue，用于存储需要延迟执行的事件
+
+    // 钩子函数
+    this.hooks = {};
+    this.setupHooks(timings, callbacks);
+
+    // 执行Promise
+    this.executionPromise = null;
+    this.timeoutTimer = null;
   }
 
   /**
-   * 添加钩子函数到事件
-   * @param {string} timing - 钩子的触发时机（before, during, after）
-   * @param {Promise<void>} hook - 要添加的钩子函数
-   * @returns {GameEvent} - 返回自身
+   * 设置事件优先级
+   * @param {EventPriority} priority - 优先级
+   */
+  setPriority(priority) {
+    this.priority = priority;
+    return this;
+  }
+
+  /**
+   * 设置是否允许其他事件插入
+   * @param {boolean} allow - 是否允许
+   */
+  setAllowInsertion(allow) {
+    this.allowInsertion = allow;
+    return this;
+  }
+
+  /**
+   * 设置超时时间
+   * @param {number} ms - 毫秒数
+   */
+  setTimeout(ms) {
+    this.timeout = ms;
+    return this;
+  }
+
+  /**
+   * 设置钩子函数
+   * @private
+   */
+  setupHooks(timings, callbacks) {
+    timings.forEach((timing) => {
+      this.hooks[timing] = [];
+      if (callbacks && callbacks[timing]) {
+        this.addHook(timing, callbacks[timing]);
+      }
+    });
+  }
+
+  /**
+   * 添加钩子函数
+   * @param {string} timing - 触发时机
+   * @param {Function} hook - 钩子函数
    */
   addHook(timing, hook) {
     if (this.hooks[timing]) {
@@ -78,91 +111,165 @@ export class GameEvent {
   }
 
   /**
-   * 执行指定时机的钩子函数
-   * @param {string} timing - 钩子的触发时机（before, during, after）
+   * 执行特定时机的所有钩子函数
+   * @private
    */
-  async executeHooks(timing, game = null) {
-    if (this.hooks[timing]) {
-      await Promise.all(this.hooks[timing].map((hook) => hook(this, game)));
+  async executeHooks(timing, game) {
+    if (!this.hooks[timing].length) return;
+
+    for (const hook of this.hooks[timing]) {
+      try {
+        await hook(this, game);
+      } catch (error) {
+        console.error(`Error in ${this.type} event ${timing} hook:`, error);
+        throw error;
+      }
     }
   }
 
   /**
-   * Executes the event, progressing through its defined timings (e.g., 'before', 'during', 'after').
-   * It runs callbacks and hooks for each timing.
-   * If the event is cancelled during the 'before' phase, further execution is halted.
-   * If an `insertRequest` is present (e.g., a child event needs to run),
-   * the current event is paused, the inserted event executes, and then the current event resumes.
-   * @param {Game | null} game - The game instance, passed to callbacks and hooks.
-   * @returns {Promise<any>} - The result of the event, often set in `this.data.result`.
+   * 执行事件
+   * @param {Game} game - 游戏实例
    */
-  async execute(game = null) {
-    // Determine the starting phase, defaults to "before" or resumes from currentPhase if paused.
-    const start = this.currentPhase || "before";
-    // Iterate through the defined timings for this event (e.g., ["before", "during", "after"])
-    for (let i = this.timings.indexOf(start); i < this.timings.length; i++) {
-      const currentTiming = this.timings[i];
-      this.currentPhase = currentTiming; // Update current phase
+  async execute(game) {
+    if (this.state === EventState.CANCELLED) return;
 
-      // Execute the main callback for the current timing phase (if defined)
-      if (this.callbacks[currentTiming]) {
-        await this.callbacks[currentTiming](this, game);
-      }
-      // Execute any registered hooks for the current timing phase
-      await this.executeHooks(currentTiming, game);
+    this.executionPromise = new Promise(async (resolve, reject) => {
+      try {
+        this.state = EventState.RUNNING;
 
-      // If the event is cancelled during the 'before' phase (or the first phase in timings array),
-      // stop further processing of this event.
-      if ((currentTiming === "before" || i === 0) && this.isCancelled) {
-        break;
-      }
+        // 设置超时处理
+        this.timeoutTimer = setTimeout(() => {
+          if (this.state === EventState.RUNNING) {
+            this.cancel();
+            reject(
+              new Error(`Event ${this.type} timed out after ${this.timeout}ms`)
+            );
+          }
+        }, this.timeout);
 
-      // If there's a request to insert another event (e.g., a child event created via game.createEvent()),
-      // pause this event, execute the inserted event, and then resume.
-      if (this.insertRequest) {
-        this.paused = true; // Mark this event as paused
-        await this.insertRequest(); // Execute the inserted event/logic
-        this.insertRequest = null; // Clear the insert request
-        this.paused = false; // Unmark as paused
+        // 执行各阶段钩子
+        await this.executeHooks("before", game);
+        await this.executeHooks("during", game);
+        await this.executeHooks("after", game);
+
+        // 处理延迟执行的事件
+        if (this.deferredEvents.length > 0) {
+          // 按优先级排序延迟事件
+          this.deferredEvents.sort((a, b) => b.priority - a.priority);
+          for (const event of this.deferredEvents) {
+            await game.insertEvent(event);
+          }
+        }
+
+        clearTimeout(this.timeoutTimer);
+        this.complete();
+        await this.executeHooks("final", game);
+        resolve();
+      } catch (error) {
+        clearTimeout(this.timeoutTimer);
+        this.cancel();
+        reject(error);
       }
-    }
-    this.isFinished = true; // Mark the event as finished
-    return this.data.result; // Return any result stored in the event's data
+    });
+
+    return this.executionPromise;
   }
 
   /**
-   * 取消事件，仅在before阶段调用有效。
-   * 如果事件被取消，后续的during和after阶段将不会执行。
-   * @returns {GameEvent} - 返回自身。
+   * 暂停事件
+   */
+  pause() {
+    if (this.state === EventState.RUNNING) {
+      this.state = EventState.PAUSED;
+    }
+    return this;
+  }
+
+  /**
+   * 恢复事件
+   */
+  resume() {
+    if (this.state === EventState.PAUSED) {
+      this.state = EventState.RUNNING;
+    }
+    return this;
+  }
+
+  /**
+   * 完成事件
+   */
+  complete() {
+    this.state = EventState.COMPLETED;
+    return this;
+  }
+
+  /**
+   * 取消事件
    */
   cancel() {
-    // Cancellation is only effective if called during the 'before' phase (or the first phase).
-    if (this.currentPhase !== "before" && this.currentPhase !== this.timings[0]) {
-      console.warn("Event can only be effectively cancelled during its 'before' phase.");
-      // Allow cancellation but it might not prevent already executed parts of 'during' or 'after'
-      // if called too late directly. Standard cancellation is checked after 'before' hooks.
-    }
-    this.isCancelled = true;
+    this.state = EventState.CANCELLED;
+    clearTimeout(this.timeoutTimer);
     return this;
   }
 
   /**
-    }
-    this.isCancelled = true;
-    return this;
-  }
-
-  /**
-   * 实现then方法，使Event类可以被await
-   * @param {function} resolve - resolve函数
-   * @param {function} [reject] - reject函数（可选）
-   * @returns {Promise} - 返回一个Promise对象
+   * 添加延迟执行的事件
+   * @param {GameEvent} event - 要延迟执行的事件
    */
-  then(resolve, reject) {
-    return this.execute().then(resolve).catch(reject);
+  defer(event) {
+    this.deferredEvents.push(event);
+    return this;
   }
-  // 实现catch
-  catch(reject) {
-    return this.execute().catch(reject);
+
+  /**
+   * 检查事件是否已完成
+   */
+  isCompleted() {
+    return this.state === EventState.COMPLETED;
+  }
+
+  /**
+   * 检查事件是否已取消
+   */
+  isCancelled() {
+    return this.state === EventState.CANCELLED;
+  }
+  /**
+   * 使GameEvent成为thenable对象，可以被await
+   * @param {Function} onFulfilled - 成功回调
+   * @param {Function} onRejected - 失败回调
+   */
+  then(onFulfilled, onRejected) {
+    // 如果事件已经完成，直接返回结果
+    if (this.isCompleted()) {
+      return Promise.resolve(this.data.result).then(onFulfilled, onRejected);
+    }
+
+    // 否则创建一个新的Promise，在final阶段完成后resolve
+    return new Promise((resolve, reject) => {
+      // 确保final钩子执行后触发
+      this.hooks.final = this.hooks.final || [];
+      this.hooks.final.push(() => {
+        if (this.isCompleted()) {
+          resolve(this.data.result);
+        } else {
+          reject(new Error("Event did not complete successfully"));
+        }
+      });
+
+      // 如果已经有executionPromise，也绑定它的状态
+      if (this.executionPromise) {
+        this.executionPromise.then(resolve, reject);
+      }
+    }).then(onFulfilled, onRejected);
+  }
+
+  /**
+   * 捕获错误
+   * @param {Function} onRejected - 失败回调
+   */
+  catch(onRejected) {
+    return this.then(undefined, onRejected);
   }
 }

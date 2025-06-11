@@ -4,6 +4,51 @@
  * @class Animations
  */
 export class Animations {
+  /**
+   * 创建跟随鼠标的tooltip提示框
+   * @param {string} content - tooltip内容
+   * @param {Event} event - 触发事件
+   * @returns {Object} - 包含tooltip元素和移除方法的对象
+   */
+  static createTooltip(content, event) {
+    // 创建tooltip元素
+    const tooltip = document.createElement("div");
+    tooltip.className = "tooltip";
+    tooltip.textContent = content;
+    tooltip.style.left = `${event.pageX + 10}px`;
+    tooltip.style.top = `${event.pageY + 10}px`;
+    document.body.appendChild(tooltip);
+    
+    // 创建移除tooltip的函数
+    const removeTooltip = () => {
+      if (tooltip && document.body.contains(tooltip)) {
+        tooltip.remove();
+        document.removeEventListener("mousemove", onDocMove);
+        document.removeEventListener("mousedown", removeTooltip);
+      }
+    };
+    
+    // 用于判断鼠标是否离开了目标元素
+    const onDocMove = (e) => {
+      if (!e.target.closest(".item-card") && !e.target.closest(".equipped-item")) {
+        removeTooltip();
+      } else {
+        // 更新tooltip位置
+        tooltip.style.left = `${e.pageX + 10}px`;
+        tooltip.style.top = `${e.pageY + 10}px`;
+      }
+    };
+    
+    // 添加事件监听
+    document.addEventListener("mousemove", onDocMove);
+    document.addEventListener("mousedown", removeTooltip, { once: true });
+    
+    return {
+      tooltip,
+      removeTooltip
+    };
+  }
+  
   static appendUsingDocumentFragment(parentElement, htmlString) {
     const fragment = document.createDocumentFragment();
     const tempContainer = document.createElement("div");

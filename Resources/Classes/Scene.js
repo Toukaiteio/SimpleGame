@@ -101,7 +101,7 @@ export class Scene {
    */
   render(container) {
     const game = getGameInstance();
-    return game.createEvent(
+    const event = game.createEvent(
       game.eventWrapper(
         "renderScene",
         { rederingScene: this, container: container },
@@ -132,6 +132,8 @@ export class Scene {
         }
       )
     );
+    event.allowInsertion = false;
+    return event
   }
   updateSelf() {
     return;
