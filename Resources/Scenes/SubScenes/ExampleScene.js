@@ -8,7 +8,9 @@ import {
 import { InGameEvent } from "../../Classes/InGameEvent.js";
 import { Player } from "../../Classes/Player.js";
 import { EventPriority } from "../../Classes/GameEvent.js";
-
+import { Battle } from "../../Classes/Battle.js";
+import { Slime } from "../../Scripts/Monsters/General.js";
+import { Animations } from "../../Classes/Animations.js";
 class ExampleScene extends SubScene {
   constructor() {
     super("ExampleScene");
@@ -19,12 +21,15 @@ class ExampleScene extends SubScene {
   /**
    * 在场景渲染前准备内容
    */
-  beforeRendered() {
+  async beforeRendered() {
     getStoryTellerElement().innerHTML = "";
-    
+
     const initialText = document.createElement("p");
-    initialText.innerHTML = i18n.t("example_scene_initial_text");
     getStoryTellerElement().appendChild(initialText);
+    await Animations.writeWithHTML(
+      initialText,
+      i18n.t("example_scene_initial_text")
+    );
     getStoryTellerElement().appendChild(document.createElement("hr"));
   }
 
@@ -36,14 +41,18 @@ class ExampleScene extends SubScene {
   createSceneChoiceEvent() {
     const choices = {
       example_scene_choice_1_text: async () => {
-        const feedbackText = document.createElement("p");
-        feedbackText.innerHTML = i18n.t("example_scene_choice_1_feedback");
-        getStoryTellerElement().appendChild(feedbackText);
+        // const feedbackText = document.createElement("p");
+        // feedbackText.innerHTML = i18n.t("example_scene_choice_1_feedback");
+        // getStoryTellerElement().appendChild(feedbackText);
+        new Battle(getPlayerInstance(), new Slime());
       },
       example_scene_choice_2_text: async () => {
         const feedbackText = document.createElement("p");
-        feedbackText.innerHTML = i18n.t("example_scene_choice_2_feedback");
         getStoryTellerElement().appendChild(feedbackText);
+        Animations.writeWithHTML(
+          feedbackText,
+          i18n.t("example_scene_choice_2_feedback")
+        );
       },
     };
 
@@ -117,6 +126,10 @@ class ExampleScene extends SubScene {
     choiceEvent.addHook("after", async () => {
       const continueButton = this.createContinueButton();
       getStoryTellerElement().appendChild(continueButton);
+      await Animations.write(
+        continueButton,
+        i18n.t("example_scene_continue_button")
+      );
     });
 
     // 添加事件超时处理

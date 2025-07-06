@@ -1,7 +1,6 @@
 import {
   getUIInstance,
   getGameInstance,
-  getMapInstance,
   getPlayerInstance,
 } from "../Scripts/Shared.js";
 import { log } from "./Utils.js"; // Corrected path for log
@@ -55,8 +54,8 @@ export class Battle {
    */
   onBattleBegin() {
     const game = getGameInstance();
-    // const player = this.player; // Already available via this.player
-    // const monster = this.monster; // Already available via this.monster
+    const player = this.player;
+    const monster = this.monster;
     return game.insertEvent(
       game.eventWrapper(
         "onBattleBegin",
@@ -86,11 +85,7 @@ export class Battle {
         { battle: this },
         {
           after: async (self, game) => {
-            // Clear logs for the new turn first.
-            const currentUIScene = getUIInstance().getCurrentScene();
-            if (currentUIScene && currentUIScene.battleLogs && Array.isArray(currentUIScene.battleLogs)) {
-                currentUIScene.battleLogs = [];
-            }
+            
 
             // Increment turn counter
             self.data.battle.turn += 1;
@@ -102,8 +97,9 @@ export class Battle {
                 self.data.battle
                   .onAttack(self.data.battle.player, self.data.battle.monster)
                   .addHook("after", async (attackEvent, game) => { // Renamed self to attackEvent for clarity
-                    if (currentUIScene.battleLogs) {
-                      currentUIScene.battleLogs.push(
+                    const currentUIScene = getUIInstance().getCurrentScene();
+                    if (currentUIScene && currentUIScene.addBattleLog) {
+                      currentUIScene.addBattleLog(
                         i18n.f("skill_use_text", {
                           SkillName: i18n.t("skill_normal_hit"),
                           DamageNumber: attackEvent.data.attackPower, // Corrected: use attackEvent
@@ -193,7 +189,7 @@ export class Battle {
                     self.data.battle.onMonsterDied(self.data.battle.player, self.data.battle.monster);
                 }
             }
-            // The line `getUIInstance().getCurrentScene().battleLogs = [];` was moved to the beginning of this 'after' block.
+            
           },
         }
       )
@@ -348,8 +344,8 @@ export class Battle {
           after: async (self, game) => {
             // Log player death.
             const currentUIScene = getUIInstance().getCurrentScene();
-            if (currentUIScene && currentUIScene.battleLogs) {
-                currentUIScene.battleLogs.push(i18n.t("battle_info_player_died"));
+            if (currentUIScene && currentUIScene.addBattleLog) {
+                currentUIScene.addBattleLog(i18n.t("battle_info_player_died"));
             }
 
             // Create a button to leave the battle.

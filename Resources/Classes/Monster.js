@@ -35,7 +35,7 @@ export class Monster {
       charm: status.charm || 0,
       luck: status.luck || 0,
       cognition: status.cognition || 0, // Default cognition if not provided
-      energy: status.energy || 1,       // Default energy if not provided
+      energy: status.energy || 1, // Default energy if not provided
       buffList: [], // Initialize buff list
     };
 
@@ -49,7 +49,9 @@ export class Monster {
             { entity: this, ori: target[key], key, value },
             {
               during: async (self, game) => {
-                if (typeof self.data.entity._status[self.data.key] !== "undefined") {
+                if (
+                  typeof self.data.entity._status[self.data.key] !== "undefined"
+                ) {
                   self.data.entity._status[self.data.key] = self.data.value;
                   self.data.result = true;
                 } else {
@@ -137,7 +139,8 @@ export class Monster {
               (b) => b.buff === buffId
             );
 
-            if (!existingBuff && availableBuffs[buffId]) { // If buff doesn't exist on entity and is a valid buff
+            if (!existingBuff && availableBuffs[buffId]) {
+              // If buff doesn't exist on entity and is a valid buff
               const newBuffData = {
                 buff: buffId,
                 remainRound: self.data.effectRound,
@@ -190,7 +193,8 @@ export class Monster {
 
             if (buffInstance) {
               // Remove the associated global trigger for the buff's effect
-              game.removeGlobalTrigger( // Assuming a removeGlobalTrigger method exists
+              game.removeGlobalTrigger(
+                // Assuming a removeGlobalTrigger method exists
                 availableBuffs[buffInstance.buff].effect_timing[0],
                 availableBuffs[buffInstance.buff].effect_timing[1],
                 buffInstance.hookSymbol
@@ -237,7 +241,7 @@ export class Monster {
     return game.createEvent(
       game.eventWrapper(
         "giveItem",
-        { item_id, entity: this, num},
+        { item_id, entity: this, num },
         {
           after: async (self, game) => {
             const entity = self.data.entity; // The monster/player receiving the item
@@ -252,14 +256,20 @@ export class Monster {
             } else {
               // If item doesn't exist, create a new instance and add it.
               entity.inventory[itemId] = [new item_list[itemId]()];
-              eventContinuation = entity.inventory[itemId][0].addUseTime(Math.max(0, quantity - 1)); // Adjust for initial creation
+              eventContinuation = entity.inventory[itemId][0].addUseTime(
+                Math.max(0, quantity - 1)
+              ); // Adjust for initial creation
             }
             // Hook to update UI (e.g., player bag) after item count is changed.
             // This might be more relevant for Player, but keeping structure if Monster can have UI.
-            eventContinuation.addHook("after", async (itemEvent, gameInstance) => {
+            eventContinuation.then((itemEvent, gameInstance) => {
               const ui = getUIInstance();
               // Check if playerBag exists on currentScene (specific to GameStoryTeller)
-              if (ui.currentScene && ui.currentScene.playerBag && typeof ui.currentScene.playerBag.updateSelf === 'function') {
+              if (
+                ui.currentScene &&
+                ui.currentScene.playerBag &&
+                typeof ui.currentScene.playerBag.updateSelf === "function"
+              ) {
                 ui.currentScene.playerBag.updateSelf(entity);
               }
             });
@@ -285,7 +295,8 @@ export class Monster {
           after: async (self, game) => {
             const entity = self.data.entity;
             const healAmount = self.data.amount;
-            entity.status.hp = Math.max( // Ensure hp doesn't go below 0
+            entity.status.hp = Math.max(
+              // Ensure hp doesn't go below 0
               0,
               Math.min(entity.status.hp + healAmount, entity.status.maxHp) // Ensure hp doesn't exceed maxHp
             );
@@ -331,7 +342,10 @@ export class Monster {
             const entity = self.data.entity;
             const itemId = self.data.item_id;
             const quantity = num; // Passed from outer scope
-            if (entity.inventory[itemId] && entity.inventory[itemId].length > 0) {
+            if (
+              entity.inventory[itemId] &&
+              entity.inventory[itemId].length > 0
+            ) {
               const itemInstance = entity.inventory[itemId][0];
               itemInstance.costUseTime(quantity); // Item's costUseTime handles reducing count/uses
             }
@@ -359,8 +373,12 @@ export class Monster {
             const itemToEquip = self.data.item;
             const itemId = itemToEquip.item_id;
             // Check if item is in inventory and the corresponding equipment slot is free
-            if (entity.inventory[itemId] && entity.inventory[itemId].length > 0) {
-              if (!entity.equipment[itemToEquip.equip_slot]) { // Assuming item has equip_slot property
+            if (
+              entity.inventory[itemId] &&
+              entity.inventory[itemId].length > 0
+            ) {
+              if (!entity.equipment[itemToEquip.equip_slot]) {
+                // Assuming item has equip_slot property
                 itemToEquip.costUseTime(1); // Reduce inventory count by 1
                 itemToEquip.equip(entity); // Call item's own equip logic
               }
@@ -413,7 +431,8 @@ export class Monster {
         {
           after: async (self, game) => {
             try {
-              if (self.data.attributeName !== "buffList") { // Buff list is handled as is, not calculated with bonuses
+              if (self.data.attributeName !== "buffList") {
+                // Buff list is handled as is, not calculated with bonuses
                 const entity = self.data.entity;
                 const attrName = self.data.attributeName;
                 let baseValue = entity.status[attrName] || 0;
@@ -436,8 +455,12 @@ export class Monster {
               }
             } catch (error) {
               // Handle potential errors, e.g., if attribute doesn't exist
-              console.error(`Error calculating attribute ${self.data.attributeName}:`, error);
-              self.data.result = self.data.entity.status[self.data.attributeName] || 0; // Fallback
+              console.error(
+                `Error calculating attribute ${self.data.attributeName}:`,
+                error
+              );
+              self.data.result =
+                self.data.entity.status[self.data.attributeName] || 0; // Fallback
             }
           },
         }
@@ -488,8 +511,11 @@ export class Monster {
         { skillId },
         {
           after: async (self, game) => {
-            const skillToUse = this.skills.find((s) => s.id === self.data.skillId);
-            if (skillToUse && !skillToUse.isCoolingDown) { // Check if skill exists and is not on cooldown
+            const skillToUse = this.skills.find(
+              (s) => s.id === self.data.skillId
+            );
+            if (skillToUse && !skillToUse.isCoolingDown) {
+              // Check if skill exists and is not on cooldown
               skillToUse.triggerSkill(this, game); // Delegate to skill's own trigger logic
             }
           },

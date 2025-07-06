@@ -1,54 +1,57 @@
+import { html, render } from "../ThirdParty/lit-html.js";
 /**
  * Animations类，提供一些动画函数
  *
  * @class Animations
  */
 export class Animations {
-  /**
-   * 创建跟随鼠标的tooltip提示框
-   * @param {string} content - tooltip内容
-   * @param {Event} event - 触发事件
-   * @returns {Object} - 包含tooltip元素和移除方法的对象
-   */
-  static createTooltip(content, event) {
-    // 创建tooltip元素
+  static createTooltip(content, event, parseHTML = false) {
     const tooltip = document.createElement("div");
     tooltip.className = "tooltip";
-    tooltip.textContent = content;
-    tooltip.style.left = `${event.pageX + 10}px`;
-    tooltip.style.top = `${event.pageY + 10}px`;
     document.body.appendChild(tooltip);
-    
-    // 创建移除tooltip的函数
+
+    const template = parseHTML ? html`${content}` : content;
+    render(template, tooltip);
+
+    gsap.set(tooltip, { 
+      left: event.pageX + 10,
+      top: event.pageY + 10,
+      opacity: 0,
+      scale: 0.95
+    });
+    gsap.to(tooltip, { opacity: 1, scale: 1, duration: 0.2 });
+
     const removeTooltip = () => {
-      if (tooltip && document.body.contains(tooltip)) {
-        tooltip.remove();
-        document.removeEventListener("mousemove", onDocMove);
-        document.removeEventListener("mousedown", removeTooltip);
-      }
+      gsap.to(tooltip, { opacity: 0, scale: 0.95, duration: 0.2, onComplete: () => {
+        if (tooltip && document.body.contains(tooltip)) {
+          tooltip.remove();
+          document.removeEventListener("mousemove", onDocMove);
+          document.removeEventListener("mousedown", removeTooltip);
+        }
+      }});
     };
-    
-    // 用于判断鼠标是否离开了目标元素
+
     const onDocMove = (e) => {
-      if (!e.target.closest(".item-card") && !e.target.closest(".equipped-item")) {
+      if (
+        !e.target.closest(".item-card") &&
+        !e.target.closest(".equipped-item") &&
+        !e.target.closest("span[hasDescription]")
+      ) {
         removeTooltip();
       } else {
-        // 更新tooltip位置
-        tooltip.style.left = `${e.pageX + 10}px`;
-        tooltip.style.top = `${e.pageY + 10}px`;
+        gsap.to(tooltip, { left: e.pageX + 10, top: e.pageY + 10, duration: 0.1 });
       }
     };
-    
-    // 添加事件监听
+
     document.addEventListener("mousemove", onDocMove);
     document.addEventListener("mousedown", removeTooltip, { once: true });
-    
+
     return {
       tooltip,
-      removeTooltip
+      removeTooltip,
     };
   }
-  
+
   static appendUsingDocumentFragment(parentElement, htmlString) {
     const fragment = document.createDocumentFragment();
     const tempContainer = document.createElement("div");
@@ -58,13 +61,61 @@ export class Animations {
     }
     parentElement.appendChild(fragment);
   }
-  static write(element, text) {
-    Animations.appendUsingDocumentFragment(element, `<div>${text}</div>`);
-  }
-  static writeWithHTML(element, htmlString) {
-    Animations.appendUsingDocumentFragment(element, htmlString);
+  static isWriting = false;
+  static writingQueue = [];
+
+  static processWritingQueue() {
+    if (this.isWriting || this.writingQueue.length === 0) {
+      return;
+    }
+
+    this.isWriting = true;
+    const { element, text, isHTML, resolve } = this.writingQueue.shift();
+    const target = element;
+    const vars = {
+      duration: text.length * 0.05,
+      text: text,
+      ease: "none",
+      onComplete: () => {
+        this.isWriting = false;
+        this.processWritingQueue();
+        resolve();
+      },
+    };
+
+    if (isHTML) {
+      vars.type = "html";
+    }
+
+    const animation = gsap.to(target, vars);
+
+    const skipAnimation = () => {
+      animation.progress(1);
+    };
+    setTimeout(() => {
+      document.addEventListener("click", skipAnimation, { once: true });
+    }, 100);
   }
 
+  static write(element, text) {
+    return new Promise((resolve) => {
+      this.writingQueue.push({ element, text, isHTML: false, resolve });
+      this.processWritingQueue();
+    });
+  }
+
+  static writeWithHTML(element, htmlString) {
+    return new Promise((resolve) => {
+      this.writingQueue.push({
+        element,
+        text: htmlString,
+        isHTML: true,
+        resolve,
+      });
+      this.processWritingQueue();
+    });
+  }
+  /**@deprecated */
   static attachHoverDescription(element, title, desc) {
     let timer;
     let tooltip;
@@ -125,9 +176,8 @@ export class Animations {
       }
     };
     const hideTooltip = (isForced = false) => {
-
       if (tooltip) {
-        if(isForced) {
+        if (isForced) {
           tooltip.remove();
           tooltip = null;
         } else {
@@ -143,7 +193,6 @@ export class Animations {
             }
           }, 400);
         }
-
       }
     };
     const handleMouseEnter = (e) => {
@@ -159,6 +208,7 @@ export class Animations {
     element.addEventListener("mouseenter", handleMouseEnter);
     element.addEventListener("mouseleave", handleMouseLeave);
   }
+  /**@deprecated */
   static clearAllTooltips() {
     const ExsitingTooltips = document.querySelectorAll(
       "div.Tooltip.DYSTooltip"
@@ -186,48 +236,60 @@ export class Animations {
     }
 
     const message = document.createElement("div");
-    message.style.position = "relative";
-    message.style.padding = "10px 20px";
-    message.style.width = "fit-content";
-    message.style.borderRadius = "5px";
-    message.style.boxShadow = "0 2px 10px rgba(0, 0, 0, 0.1)";
-    message.style.transition = "transform 0.3s ease, opacity 0.3s ease";
-    message.style.transform = "translateX(100%)";
-    message.style.opacity = "0";
-    message.innerHTML = msg;
+    const template = html`${msg}`;
+    render(template, message);
 
-    switch (type) {
-      case "warning":
-        message.style.backgroundColor = "#f0ad4e";
-        message.style.color = "#fff";
-        break;
-      case "error":
-        message.style.backgroundColor = "#d9534f";
-        message.style.color = "#fff";
-        break;
-      case "info":
-      default:
-        message.style.backgroundColor = "#5bc0de";
-        message.style.color = "#fff";
-        break;
+    const colors = {
+        warning: "#f0ad4e",
+        error: "#d9534f",
+        info: "#5bc0de"
     }
+
+    gsap.set(message, {
+        backgroundColor: colors[type] || colors.info,
+        color: "#fff",
+        padding: "10px 20px",
+        borderRadius: "5px",
+        boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
+        x: "100%",
+        opacity: 0
+    });
 
     container.insertBefore(message, container.firstChild);
 
-    requestAnimationFrame(() => {
-      message.style.transform = "translateX(0)";
-      message.style.opacity = "1";
-    });
+    gsap.to(message, { x: 0, opacity: 1, duration: 0.3 });
 
-    setTimeout(() => {
-      message.style.transform = "translateX(100%)";
-      message.style.opacity = "0";
-      message.addEventListener("transitionend", () => {
-        message.remove();
-        if (container.children.length === 0) {
-          container.remove();
+    gsap.to(message, { 
+        x: "100%", 
+        opacity: 0, 
+        duration: 0.3, 
+        delay: duration / 1000, 
+        onComplete: () => {
+            message.remove();
+            if (container.children.length === 0) {
+                container.remove();
+            }
         }
-      });
-    }, duration);
+    });
+  }
+  static breakElement(element) {
+    const split = new SplitText(element, { type: "chars,words" });
+    const chars = split.chars;
+
+    gsap.set(element, { perspective: 400 });
+
+    gsap.to(chars, {
+      duration: 2,
+      opacity: 0,
+      physics2D: {
+        velocity: "random(200, 600)",
+        angle: "random(250, 290)",
+        gravity: 600,
+      },
+      stagger: {
+        each: 0.1,
+        from: "random",
+      }
+    });
   }
 }

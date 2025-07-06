@@ -7,21 +7,23 @@ import {
   getUIInstance,
 } from "../../Scripts/Shared.js";
 import { Buff_List } from "../../Scripts/Buffs/General.js";
+import { FastComponent } from "../../Classes/FastCompoent.js";
+import { Animations } from "../../Classes/Animations.js";
+import { html, render } from "../../ThirdParty/lit-html.js";
 class BattleScene extends SubScene {
   constructor() {
     super("BattleScene");
     this.isAllowSave = false;
     this.textContent = i18n.t(this.id);
-    // 勾住 onBattleBegin 的 after时机，将游戏场景跳转至自身;
+    this.battleLogContainer = FastComponent.BattleLogContainer();
     const game = getGameInstance();
-    // 在Batlle场景被创建时会自动注册，不需要考虑被注册问题。
     game.addGlobalTrigger("onBattleBegin", "after", async (self, game) => {
       const next = self.data.player.moveTo("#BattleScene");
-      // add next round button to defaultIntereactives here;
       this.hasRoadTo = [];
-      this.battleLogs = [];
       this.isBattleEnd = false;
       this.noSafeText = true;
+      this.playerCardShattered = false;
+      this.monsterCardShattered = false;
       this.defaultIntereactives = [document.createElement("br")];
       this.defaultIntereactives.push(
         this.createButton("nextround", i18n.t("battle_func_next_round"), () => {
@@ -61,7 +63,14 @@ class BattleScene extends SubScene {
       });
     });
   }
-  createButton(name, content, callback, title = "", isForbid = false, extraClass = "") {
+  createButton(
+    name,
+    content,
+    callback,
+    title = "",
+    isForbid = false,
+    extraClass = ""
+  ) {
     const t = document.createElement("button");
     t.id = name;
     t.innerHTML = content;
@@ -71,69 +80,58 @@ class BattleScene extends SubScene {
     if (extraClass) t.classList.add(extraClass);
     return t;
   }
+  addBattleLog(logEntry) {
+    this.battleLogContainer.addLog(logEntry);
+  }
+  clearBattleLog() {
+    this.battleLogContainer.clearLog();
+  }
   updateSelf() {
     if (this.battleData && this.battleData.battle) {
       const player = this.battleData.player;
       const monster = this.battleData.monster;
       const battle = this.battleData.battle;
 
-      let playerBuffsHTML = '<h4>Buffs:</h4>';
-      if (player.status.buffList.length > 0) {
-        player.status.buffList.forEach(buff => {
-          const buffName = i18n.t(`buff_${buff.buff}_name`) || buff.buff;
-          const rounds = Buff_List[buff.buff]?.no_round_limited_symbol ? 'Persistent' : `${buff.remainRound}r`;
-          playerBuffsHTML += `<div>[B] ${buffName} (${rounds}) - ${i18n.t(Buff_List[buff.buff]?.effect_desc) || ''}</div>`;
-        });
-      } else {
-        playerBuffsHTML += `<div>${i18n.t('battle_no_player_buffs') || 'No active buffs.'}</div>`;
-      }
+      const playerCard = FastComponent.CharacterCard(player);
+      const monsterCard = FastComponent.CharacterCard(monster);
 
-      let monsterBuffsHTML = '<h4>Buffs:</h4>';
-      if (monster.status.buffList.length > 0) {
-        monster.status.buffList.forEach(buff => {
-          const buffName = i18n.t(`buff_${buff.buff}_name`) || buff.buff;
-          const rounds = Buff_List[buff.buff]?.no_round_limited_symbol ? 'Persistent' : `${buff.remainRound}r`;
-          monsterBuffsHTML += `<div>[B] ${buffName} (${rounds}) - ${i18n.t(Buff_List[buff.buff]?.effect_desc) || ''}</div>`;
-        });
-      } else {
-        monsterBuffsHTML += `<div>${i18n.t('battle_no_monster_buffs') || 'No active buffs.'}</div>`;
-      }
-
-      const playerHpPercentage = Math.max(0, (player.status.hp / player.status.maxHp) * 100);
-      const monsterHpPercentage = Math.max(0, (monster.status.hp / monster.status.maxHp) * 100);
-
-      this.textContent = `
+      const template = html`
         <div class="battle-layout">
-            <div class="combatants-container">
-                <div class="combatant-info player-info">
-                    <h3>${i18n.t(player.name) || player.name}</h3>
-                    <div class="health-bar-container">
-                        <div class="health-bar-label">HP: ${player.status.hp} / ${player.status.maxHp}</div>
-                        <div class="health-bar" style="width: ${playerHpPercentage}%; background-color: green;"></div>
-                    </div>
-                    ${playerBuffsHTML}
-                </div>
-                <div class="combatant-info monster-info">
-                    <h3>${i18n.t(monster.name) || monster.name}</h3>
-                    <div class="health-bar-container">
-                        <div class="health-bar-label">HP: ${monster.status.hp} / ${monster.status.maxHp}</div>
-                        <div class="health-bar" style="width: ${monsterHpPercentage}%; background-color: red;"></div>
-                    </div>
-                    ${monsterBuffsHTML}
-                </div>
+            <div class="combatants-container" style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
+                <div id="player-card-container" style="flex: 1 1 300px;">${playerCard}</div>
+                <div id="monster-card-container" style="flex: 1 1 300px;">${monsterCard}</div>
             </div>
             <div class="battle-log-area battle-log-panel">
-                <h4>${i18n.t('battle_log_title') || 'Battle Log'} (Round: ${battle.turn})</h4>
-                ${this.battleLogs.join("<br/>")}
+                ${this.battleLogContainer}
             </div>
             <div class="battle-tips-area">
-                ${!getPlayerInstance().getFlag("FirstFight") ? (i18n.t('battle_tips_skill_hover') || 'Tips: Hover over skills to see their effects!') : ''}
+                ${!getPlayerInstance().getFlag("FirstFight")
+                    ? i18n.t("battle_tips_skill_hover") ||
+                      "Tips: Hover over skills to see their effects!"
+                    : ""}
             </div>
         </div>
       `;
 
-      this.interactiveElements = []; // Clear before re-adding
+      const container = document.createElement('div');
+      render(template, container);
+      this.textContent = container.innerHTML;
+
+      setTimeout(() => {
+        if (player.status.hp <= 0 && !this.playerCardShattered) {
+          const playerCardElement = document.getElementById("player-card-container");
+          if(playerCardElement) Animations.breakElement(playerCardElement);
+          this.playerCardShattered = true;
+        }
+        if (monster.status.hp <= 0 && !this.monsterCardShattered) {
+          const monsterCardElement = document.getElementById("monster-card-container");
+          if(monsterCardElement) Animations.breakElement(monsterCardElement);
+          this.monsterCardShattered = true;
+        }
+      }, 0);
+
       if (!battle.isBattleEnd) {
+        this.interactiveElements = []; // Clear before re-adding
         const skillButtons = [];
         for (const skill of player.skills) {
           let buttonText = skill.skillName;
@@ -141,7 +139,11 @@ class BattleScene extends SubScene {
           let extraClass = "";
 
           if (isCooling) {
-            buttonText += ` (${i18n.f("info_skill_cooling_remain", { CoolingDownRoundsRemain: skill.skillCD - skill.CDCounter }) || (skill.skillCD - skill.CDCounter) + 'r'})`;
+            buttonText += ` (${
+              i18n.f("info_skill_cooling_remain", {
+                CoolingDownRoundsRemain: skill.skillCD - skill.CDCounter,
+              }) || skill.skillCD - skill.CDCounter + "r"
+            })`;
             extraClass = "cooling-down";
           }
 
@@ -150,21 +152,20 @@ class BattleScene extends SubScene {
               `${skill.id}_skillbutton`,
               buttonText,
               () => {
-                if (!isCooling) { // Double check, though button should be disabled
-                  battle.onUseSkill(
-                    player,
-                    monster,
-                    skill.id
-                  );
+                if (!isCooling) {
+                  battle.onUseSkill(player, monster, skill.id);
                 }
               },
-              (skill.isAutoTrigger ? i18n.t("skill_AutoTrigger_flag") : "") + skill.skillDesc,
+              (skill.isAutoTrigger ? i18n.t("skill_AutoTrigger_flag") : "") +
+                skill.skillDesc,
               isCooling, // isForbid
               extraClass // new extraClass parameter
             )
           );
         }
-        this.addInteractiveElement(...skillButtons.concat(this.defaultIntereactives));
+        this.addInteractiveElement(
+          ...skillButtons.concat(this.defaultIntereactives)
+        );
       }
     }
   }

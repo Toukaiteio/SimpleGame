@@ -24,7 +24,7 @@ export class Item {
     onEquip = null,
     onUnequip = null,
     onUse = null,
-    owner = getPlayerInstance()
+    owner = getPlayerInstance(),
   }) {
     // 基本属性
     this.item_id = item_id;
@@ -79,9 +79,23 @@ export class Item {
    */
   async addUseTime(num) {
     const game = getGameInstance();
-    await game.triggerEvent("beforeAddUseTime", { item: this, num });
-    this.use_time += num;
-    await game.triggerEvent("afterAddUseTime", { item: this, num });
+    return game.createEvent(
+      game.eventWrapper(
+        "addUseTime",
+        { item: this, num },
+        {
+          before: async (self) => {
+            await game.triggerEvent("beforeAddUseTime", { item: this, num });
+          },
+          during: async (self) => {
+            this.use_time += num;
+          },
+          after: async (self) => {
+            await game.triggerEvent("afterAddUseTime", { item: this, num });
+          },
+        }
+      )
+    );
   }
 
   /**
@@ -90,15 +104,27 @@ export class Item {
    */
   async costUseTime(num) {
     const game = getGameInstance();
-    await game.triggerEvent("beforeCostUseTime", { item: this, num });
-    
-    if (this.use_time > num) {
-      this.use_time -= num;
-    } else {
-      this.use_time = 0;
-    }
-    
-    await game.triggerEvent("afterCostUseTime", { item: this, num });
+    return game.createEvent(
+      game.eventWrapper(
+        "costUseTime",
+        { item: this, num },
+        {
+          before: async (self) => {
+            await game.triggerEvent("beforeCostUseTime", { item: this, num });
+          },
+          during: async (self) => {
+            if (this.use_time > num) {
+              this.use_time -= num;
+            } else {
+              this.use_time = 0;
+            }
+          },
+          after: async (self) => {
+            await game.triggerEvent("afterCostUseTime", { item: this, num });
+          },
+        }
+      )
+    );
   }
 
   /**
@@ -119,10 +145,10 @@ export class Item {
         { item: this, targetItemId, target },
         {
           before: async (self) => {
-            await game.triggerEvent("beforeItemEnhance", { 
-              item: this, 
-              targetItemId, 
-              target 
+            await game.triggerEvent("beforeItemEnhance", {
+              item: this,
+              targetItemId,
+              target,
             });
           },
           during: async (self) => {
@@ -141,13 +167,13 @@ export class Item {
             return newItem;
           },
           after: async (self) => {
-            await game.triggerEvent("afterItemEnhance", { 
-              item: this, 
-              targetItemId, 
+            await game.triggerEvent("afterItemEnhance", {
+              item: this,
+              targetItemId,
               target,
-              result: self.result 
+              result: self.result,
             });
-          }
+          },
         }
       )
     );
@@ -193,7 +219,7 @@ export class Item {
       is_equipable: this.is_equipable,
       is_usable: this.is_usable,
       is_enhanceable: this.is_enhanceable,
-      is_tradeable: this.is_tradeable
+      is_tradeable: this.is_tradeable,
     };
   }
 
@@ -206,7 +232,7 @@ export class Item {
     const game = getGameInstance();
     let itemData;
 
-    if (typeof data === 'string') {
+    if (typeof data === "string") {
       // 如果传入的是物品ID，从游戏数据中获取物品定义
       itemData = await game.getItemData(data);
     } else {

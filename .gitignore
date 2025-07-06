@@ -3,3 +3,4 @@ stages/
 test.html
 node_modules/
 dist/
+abandon/

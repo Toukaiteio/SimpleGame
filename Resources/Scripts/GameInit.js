@@ -9,6 +9,9 @@ import { subSceneList } from "../Scenes/GameStoryTeller.js";
 import { i18n } from "../Classes/I18n.js";
 import { getItemData } from "./Items/Index.js";
 import { itemManager } from "../Classes/ItemManager.js";
+
+gsap.registerPlugin(Draggable, DrawSVGPlugin, MotionPathPlugin, MorphSVGPlugin, Physics2DPlugin, ScrambleTextPlugin, SplitText, TextPlugin);
+
 // 获取游戏容器的DOM元素
 const gameContainer = document.getElementById("GameView");
 
@@ -33,70 +36,22 @@ i18n.loadLanguage("cn").then(() => {
 
   game.addGlobalTrigger("renderScene", "after", async (self, game) => {
     if (self.data.container) {
-      Animations.clearAllTooltips();
+      // Animations.clearAllTooltips();
       const nodeList = [
         ...self.data.container.querySelectorAll("span[hasDescription]"),
       ];
       if (nodeList.length > 0) {
         for (const node of nodeList) {
           if (!node.hasTooltip) {
-            const title = node.textContent;
             const description = node.getAttribute("data-description")
               ? node.getAttribute("data-description")
               : i18n.th(node.getAttribute("data-description-at"));
-            Animations.attachHoverDescription(node, title, description);
+            node.addEventListener("mouseenter", function (e) {
+              Animations.createTooltip( description, e, true);
+            });
           }
         }
       }
-    }
-  });
-
-  // 物品使用事件
-  game.addGlobalTrigger("afterItemUse", "after", async (self, game) => {
-    const { item, target } = self.data;
-
-
-    if (ui.currentScene.playerBag) {
-      ui.currentScene.playerBag.updateSelf(target);
-    }
-
-    // 如果物品用完，从背包移除
-    if (item.use_time <= 0) {
-      const itemId = item.item_id;
-      if (target.inventory[itemId]) {
-        target.inventory[itemId] = target.inventory[itemId].filter(
-          (i) => i !== item
-        );
-        if (target.inventory[itemId].length === 0) {
-          delete target.inventory[itemId];
-        }
-      }
-    }
-  });
-
-  // 物品装备事件
-  game.addGlobalTrigger("afterItemEquip", "after", async (self, game) => {
-    const { item, target } = event;
-
-
-    if (ui.currentScene.playerBag) {
-      ui.currentScene.playerBag.updateSelf(target);
-    }
-    if (ui.currentScene.playerEquipment) {
-      ui.currentScene.playerEquipment.updateSelf(target);
-    }
-  });
-
-  // 物品卸下事件
-  game.addGlobalTrigger("afterItemUnequip", "after", async (self, game) => {
-    const { item, target } = event;
-
-
-    if (ui.currentScene.playerBag) {
-      ui.currentScene.playerBag.updateSelf(target);
-    }
-    if (ui.currentScene.playerEquipment) {
-      ui.currentScene.playerEquipment.updateSelf(target);
     }
   });
 

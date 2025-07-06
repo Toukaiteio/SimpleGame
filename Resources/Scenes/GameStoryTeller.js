@@ -10,6 +10,7 @@ import { SaveController } from "../Classes/SaveController.js";
 import { i18n } from "../Classes/I18n.js";
 import { Animations } from "../Classes/Animations.js";
 import { FastComponent } from "../Classes/FastCompoent.js";
+import { html, render } from "../ThirdParty/lit-html.js";
 
 /**
  * GameStoryTeller 子场景列表
@@ -93,70 +94,35 @@ class GameStoryTeller extends Scene {
    * @param {Object} inventory - 物品清单
    * @param {Function} onItemClick - 物品点击回调
    */
-  createInventoryGrid(container, inventory, onItemClick) {
-    const grid = document.createElement("div");
-    grid.className = "item-grid";
-
-    // 获取所有物品
+  createInventoryGrid(inventory, onItemClick) {
     const items = getPlayerInstance().getItems();
-    
-    for (const item of items) {
-      const card = document.createElement("div");
-      card.className = "item-card";
-      
-      // 根据物品类型添加额外的类名
-      if (item.is_equipable) card.classList.add("equipable");
-      if (item.is_usable) card.classList.add("usable");
-      if (item.is_enhanceable) card.classList.add("enhanceable");
 
-      const icon = document.createElement("div");
-      icon.className = "item-icon";
-      icon.textContent = "📦"; // 可以根据物品类型设置不同的图标
+    const gridTemplate = html`
+      <div class="item-grid">
+        ${items.map(item => html`
+          <div class="item-card"
+            @click=${() => onItemClick(item)}
+            @mouseenter=${(e) => item.showTooltip(e)}
+            class="${item.is_equipable ? 'equipable' : ''} ${item.is_usable ? 'usable' : ''} ${item.is_enhanceable ? 'enhanceable' : ''}"
+          >
+            <div class="item-icon">📦</div>
+            <div class="item-name">${item.getName()}</div>
+            <div class="item-count">x${item.use_time}</div>
+            ${Object.keys(item.item_status).length > 0 ? html`
+              <div class="item-status-indicator">
+                ${['strength', 'charm', 'heal_hp', 'heal_mp'].map(stat => item.item_status[stat] ? html`
+                  <div class="stat-indicator">${i18n.t(`status_${stat}`)}: +${item.item_status[stat]}</div>
+                ` : '')}
+              </div>
+            ` : ''}
+          </div>
+        `)}
+      </div>
+    `;
 
-      const name = document.createElement("div");
-      name.className = "item-name";
-      name.textContent = item.getName(); // 使用新的getName方法
-
-      const countText = document.createElement("div");
-      countText.className = "item-count";
-      countText.textContent = `x${item.use_time}`;
-
-      // 添加物品状态指示器
-      if (Object.keys(item.item_status).length > 0) {
-        const statusIndicator = document.createElement("div");
-        statusIndicator.className = "item-status-indicator";
-        
-        // 显示重要的状态属性
-        const importantStats = ["strength", "charm", "heal_hp", "heal_mp"];
-        for (const stat of importantStats) {
-          if (item.item_status[stat]) {
-            const statDiv = document.createElement("div");
-            statDiv.className = "stat-indicator";
-            statDiv.textContent = `${i18n.t(`status_${stat}`)}: +${item.item_status[stat]}`;
-            statusIndicator.appendChild(statDiv);
-          }
-        }
-        
-        if (statusIndicator.children.length > 0) {
-          card.appendChild(statusIndicator);
-        }
-      }
-
-      card.appendChild(icon);
-      card.appendChild(name);
-      card.appendChild(countText);
-
-      // 使用新的tooltip系统
-      card.addEventListener("mouseenter", (e) => {
-        item.showTooltip(e);
-      });
-
-      card.onclick = () => onItemClick(item);
-
-      grid.appendChild(card);
-    }
-
-    container.appendChild(grid);
+    const wrapper = document.createElement('div');
+    render(gridTemplate, wrapper);
+    return wrapper.firstElementChild;
   }
 
   /**
@@ -167,76 +133,8 @@ class GameStoryTeller extends Scene {
    */
   // 检查是否已存在 createAttributesList，避免重复定义
   // 如果没有则定义
-  async createAttributesList(container, status) {
-    // 清空容器，确保不会重复创建元素
-    container.innerHTML = '';
-    
-    // 创建新的属性列表元素
-    const list = document.createElement("div");
-    list.className = "attributes-list";
-
-    for (const attrKey in status) {
-      if (
-        attrKey === "buffList" ||
-        attrKey === "skillPoints" ||
-        attrKey.startsWith("max") ||
-        !status.hasOwnProperty(attrKey)
-      )
-        continue;
-
-      const item = document.createElement("div");
-      item.className = "attribute-item";
-
-      const name = document.createElement("div");
-      name.className = "attribute-name";
-      name.textContent = i18n.t(`status_${attrKey}`) || attrKey;
-
-      const value = document.createElement("div");
-      value.className = "attribute-value";
-
-      const attrValue = await getPlayerInstance().getNextAttribute(attrKey);
-      const maxAttrKey =
-        "max" + attrKey.charAt(0).toUpperCase() + attrKey.slice(1);
-
-      if (status.hasOwnProperty(maxAttrKey)) {
-        const maxValue = await getPlayerInstance().getNextAttribute(maxAttrKey);
-        value.textContent = `${attrValue} / ${maxValue}`;
-
-        const bar = document.createElement("div");
-        bar.className = "attribute-bar";
-
-        const fill = document.createElement("div");
-        fill.className = "attribute-bar-fill";
-        fill.style.width = `${(attrValue / maxValue) * 100}%`;
-
-        bar.appendChild(fill);
-        item.appendChild(bar);
-      } else {
-        value.textContent = attrValue;
-      }
-
-      item.appendChild(name);
-      item.appendChild(value);
-      list.appendChild(item);
-    }
-
-    // 添加Buff列表
-    if (status.buffList && status.buffList.length > 0) {
-      const buffsTitle = document.createElement("h3");
-      buffsTitle.textContent = i18n.t("dialog_buffs_title") || "Active Buffs";
-      list.appendChild(buffsTitle);
-
-      status.buffList.forEach((buff) => {
-        const buffItem = document.createElement("div");
-        buffItem.className = "attribute-item";
-        buffItem.textContent = `${
-          i18n.t(`buff_${buff.buff}_name`) || buff.buff
-        }: ${buff.remainRound} rounds`;
-        list.appendChild(buffItem);
-      });
-    }
-
-    container.appendChild(list);
+  createAttributesList(status) {
+    return FastComponent.AttributeList(status, getPlayerInstance, i18n);
   }
 
   /**
@@ -246,11 +144,7 @@ class GameStoryTeller extends Scene {
    * @param {Object} equipment - 装备对象
    * @param {Function} onUnequip - 卸下装备回调
    */
-  createEquipmentSlots(container, equipment, onUnequip) {
-    const slots = document.createElement("div");
-    slots.className = "equipment-slots";
-
-    // 定义装备槽位顺序
+  createEquipmentSlots(equipment, onUnequip) {
     const slotOrder = [
       "head", 
       "upper_outer_body", 
@@ -261,64 +155,38 @@ class GameStoryTeller extends Scene {
       "feet", 
       "accessory"
     ];
-    
-    // 按顺序创建槽位
-    for (const slot of slotOrder) {
-      const slotDiv = document.createElement("div");
-      slotDiv.className = "equipment-slot";
-      
-      // 如果是已装备的槽位，添加特殊样式
-      if (equipment[slot]) {
-        slotDiv.classList.add("equipped");
-      }
 
-      const slotName = document.createElement("div");
-      slotName.className = "slot-name";
-      slotName.textContent = i18n.t(`part_${slot}`) || slot;
+    const slotsTemplate = html`
+      <div class="equipment-slots">
+        ${slotOrder.map(slot => {
+          const item = equipment[slot];
+          return html`
+            <div class="equipment-slot ${item ? 'equipped' : ''}">
+              <div class="slot-name">${i18n.t(`part_${slot}`) || slot}</div>
+              <div class="equipped-item" @click=${() => item && onUnequip(item)} @mouseenter=${(e) => item && item.showTooltip(e)}>
+                ${item ? html`
+                  ${item.getName()}
+                  ${Object.keys(item.item_status).length > 0 ? html`
+                    <div class="equipment-stats">
+                      ${Object.entries(item.item_status).map(([stat, value]) => {
+                        if (stat !== "sell" && stat !== "buy" && stat !== "gender_offset") {
+                          return html`<div class="stat-bonus">${i18n.t(`status_${stat}`) || stat}: +${value}</div>`;
+                        }
+                        return '';
+                      })}
+                    </div>
+                  ` : ''}
+                ` : html`<span style="color: #999;">${i18n.t("equipment_slot_empty") || "Empty"}</span>`}
+              </div>
+            </div>
+          `;
+        })}
+      </div>
+    `;
 
-      const equippedItem = document.createElement("div");
-      equippedItem.className = "equipped-item";
-
-      if (equipment[slot]) {
-        const item = equipment[slot];
-        equippedItem.textContent = item.getName(); // 使用新的getName方法
-        
-        // 添加装备属性显示
-        if (Object.keys(item.item_status).length > 0) {
-          const statsDiv = document.createElement("div");
-          statsDiv.className = "equipment-stats";
-          
-          for (const [stat, value] of Object.entries(item.item_status)) {
-            if (stat !== "sell" && stat !== "buy" && stat !== "gender_offset") {
-              const statDiv = document.createElement("div");
-              statDiv.className = "stat-bonus";
-              statDiv.textContent = `${i18n.t(`status_${stat}`) || stat}: +${value}`;
-              statsDiv.appendChild(statDiv);
-            }
-          }
-          
-          if (statsDiv.children.length > 0) {
-            equippedItem.appendChild(statsDiv);
-          }
-        }
-        
-        equippedItem.onclick = () => onUnequip(item);
-
-        // 使用新的tooltip系统
-        equippedItem.addEventListener("mouseenter", (e) => {
-          item.showTooltip(e);
-        });
-      } else {
-        equippedItem.textContent = i18n.t("equipment_slot_empty") || "Empty";
-        equippedItem.style.color = "#999";
-      }
-
-      slotDiv.appendChild(slotName);
-      slotDiv.appendChild(equippedItem);
-      slots.appendChild(slotDiv);
-    }
-
-    container.appendChild(slots);
+    const wrapper = document.createElement('div');
+    render(slotsTemplate, wrapper);
+    return wrapper.firstElementChild;
   }
 
   /**
@@ -529,48 +397,29 @@ class GameStoryTeller extends Scene {
         {
           id: "inventory",
           label: i18n.t("dialog_tab_inventory") || "Inventory",
-          content: (container) => {
-            this.createInventoryGrid(
-              container,
-              player.inventory,
-              (item) => this.showItemActions(item, event)
-            );
-          },
+          content: () => this.createInventoryGrid(
+            player.inventory,
+            (item) => this.showItemActions(item, event)
+          ),
         },
         {
           id: "attributes",
           label: i18n.t("dialog_tab_attributes") || "Attributes",
-          content: (container) => {
-            this.createAttributesList(container, player.status);
-          },
+          content: () => this.createAttributesList(player.status),
         },
         {
           id: "equipment",
           label: i18n.t("dialog_tab_equipment") || "Equipment",
-          content: (container) => {
-            this.createEquipmentSlots(
-              container,
-              player.equipment,
-              async (item) => {
-                await this.unequipItem(item);
-              }
-            );
-          },
+          content: () => this.createEquipmentSlots(
+            player.equipment,
+            async (item) => {
+              await this.unequipItem(item);
+            }
+          ),
         },
       ],
     });
 
-    // 添加事件监听，使用更持久的监听器
-    const refreshDialog = () => {
-      if (this.playerInfoDialog) {
-        this.playerInfoDialog.querySelector(".dialog-content").refresh();
-      }
-    };
-
-    // const eventTypes = ["use", "equip", "unwield"];
-    // const triggers = eventTypes.map((eventType) =>
-    //   game.addTempGlobalTrigger(eventType, "after", refreshDialog, 1)
-    // );
 
     // 在对话框关闭时移除监听器
     const originalOnClose = this.playerInfoDialog.onclose;

@@ -1,53 +1,42 @@
 import { i18n } from "./I18n.js";
+import { html, render } from "../ThirdParty/lit-html.js";
 
 export class FastComponent {
-    /**
-   * 创建一个按钮样式的单选框组
-   * @param {string} title 标题
-   * @param {Array<{content: string, onSelect: function(FastComponent): void, onCancel: function(FastComponent): void}>} choices 选项数组
-   * @param {number} [defaultIndex=0] 默认选中项索引
-   * @param {function(number): void} [onChange] 选中变化回调，返回所选索引
-   * @returns {HTMLElement} 包含RadioGroup的DOM元素，可通过.value获取当前选中索引，未选中返回-1
-   */
   static RadioGroup(title, choices, defaultIndex = 0, onChange = () => {}) {
     const wrapper = document.createElement("div");
-    wrapper.classList.add("radio-group", "card");
-    const buttonWrapper = document.createElement("div");
-    buttonWrapper.style.display = "flex";
-    buttonWrapper.style.flexWrap = "wrap";
-    buttonWrapper.style.gap = "8px";
-    buttonWrapper.style.width = "100%";
-    const titleEl = document.createElement("div");
-    titleEl.classList.add("primaryTitle");
-    titleEl.textContent = title;
-    wrapper.appendChild(titleEl);
-
     let selected = defaultIndex;
 
-    const buttonsFragment = document.createDocumentFragment();
-    const buttons = choices.map((choice, i) => {
-      const btn = document.createElement("button");
-      btn.classList.add("primaryButton");
-      btn.textContent = choice.content;
-      if (i === defaultIndex) btn.classList.add("active");
+    const update = () => {
+      const template = html`
+        <div class="radio-group card">
+          <div class="primaryTitle">${title}</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; width: 100%;">
+            ${choices.map(
+              (choice, i) => html`
+                <button
+                  class="primaryButton ${selected === i ? "active" : ""}"
+                  @click=${() => handleClick(i)}
+                >
+                  ${choice.content}
+                </button>
+              `
+            )}
+          </div>
+        </div>
+      `;
+      render(template, wrapper);
+    };
 
-      btn.addEventListener("click", () => {
-        buttonWrapper
-          .querySelectorAll(".primaryButton")
-          .forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-
-        if (selected !== i) {
-          if (choices[selected]?.onCancel) choices[selected].onCancel(wrapper);
-          if (choice.onSelect) choice.onSelect(wrapper);
-          selected = i;
-          wrapper.value = selected;
-          onChange(i);
-        }
-      });
-      buttonsFragment.appendChild(btn);
-      return btn;
-    });
+    const handleClick = (i) => {
+      if (selected !== i) {
+        if (choices[selected]?.onCancel) choices[selected].onCancel(wrapper);
+        if (choices[i]?.onSelect) choices[i].onSelect(wrapper);
+        selected = i;
+        wrapper.value = selected;
+        onChange(i);
+        update();
+      }
+    };
 
     if (
       choices[defaultIndex]?.onSelect &&
@@ -58,15 +47,13 @@ export class FastComponent {
     }
 
     onChange(selected);
-
-    buttonWrapper.appendChild(buttonsFragment);
-    wrapper.appendChild(buttonWrapper);
     wrapper.value = selected;
     wrapper.setWarning = (msg) => {
       wrapper.title = msg;
     };
 
-    return wrapper;
+    update();
+    return wrapper.firstElementChild;
   }
 
   static CheckboxGroup(
@@ -77,51 +64,45 @@ export class FastComponent {
     onChange = () => {}
   ) {
     const wrapper = document.createElement("div");
-    wrapper.classList.add("checkbox-group", "card");
-    wrapper.style.display = "flex";
-    wrapper.style.flexWrap = "wrap";
-    wrapper.style.justifyContent = "space-around";
-
-    const titleEl = document.createElement("div");
-    titleEl.classList.add("primaryTitle");
-    titleEl.textContent = title;
-    wrapper.appendChild(titleEl);
-
-    const descEl = document.createElement("div");
-    descEl.classList.add("primaryDesc");
-    descEl.textContent = desc;
-    wrapper.appendChild(descEl);
-
     const selected = new Set(defaultIndices);
 
-    const buttonsFragment = document.createDocumentFragment();
-    selections.forEach((choice, i) => {
-      const btn = document.createElement("button");
-      btn.classList.add("primaryButton");
-      btn.textContent = choice.content;
+    const update = () => {
+      const template = html`
+        <div
+          class="checkbox-group card"
+          style="display: flex; flex-wrap: wrap; justify-content: space-around;"
+        >
+          <div class="primaryTitle">${title}</div>
+          <div class="primaryDesc">${desc}</div>
+          ${selections.map(
+            (choice, i) => html`
+              <button
+                class="primaryButton ${selected.has(i) ? "active" : ""}"
+                @click=${() => handleClick(i)}
+              >
+                ${choice.content}
+              </button>
+            `
+          )}
+        </div>
+      `;
+      render(template, wrapper);
+    };
 
-      btn.addEventListener("click", () => {
-        if (selected.has(i)) {
-          selected.delete(i);
-          btn.classList.remove("active");
-          choice.onCancel?.(wrapper);
-        } else {
-          selected.add(i);
-          btn.classList.add("active");
-          choice.onSelect?.(wrapper);
-        }
-        wrapper.value = [...selected];
-        onChange([...selected]);
-      });
+    const handleClick = (i) => {
       if (selected.has(i)) {
-        btn.classList.add("active");
+        selected.delete(i);
+        selections[i].onCancel?.(wrapper);
+      } else {
+        selected.add(i);
+        selections[i].onSelect?.(wrapper);
       }
-      buttonsFragment.appendChild(btn);
-    });
+      wrapper.value = [...selected];
+      onChange([...selected]);
+      update();
+    };
 
-    wrapper.appendChild(buttonsFragment);
     onChange([...selected]);
-
     defaultIndices.forEach((i) => {
       if (selections[i]?.onSelect) {
         selections[i].onSelect(wrapper);
@@ -133,7 +114,8 @@ export class FastComponent {
       wrapper.title = msg;
     };
 
-    return wrapper;
+    update();
+    return wrapper.firstElementChild;
   }
 
   static RangedSlide(
@@ -146,49 +128,49 @@ export class FastComponent {
     onChange = () => {}
   ) {
     const wrapper = document.createElement("div");
-    wrapper.classList.add("card");
-    const titleEl = document.createElement("div");
-    titleEl.classList.add("primaryTitle");
-    titleEl.textContent = title;
-    wrapper.appendChild(titleEl);
+    let currentValue = defaultVal;
 
-    const descEl = document.createElement("div");
-    descEl.classList.add("primaryDesc");
-    descEl.textContent = desc;
-    wrapper.appendChild(descEl);
+    const update = () => {
+      const template = html`
+        <div class="card">
+          <div class="primaryTitle">${title}</div>
+          <div class="primaryDesc">${desc}</div>
+          <div style="display: flex; align-items: center;">
+            <input
+              type="range"
+              class="primaryRange"
+              .min=${min}
+              .max=${max}
+              .step=${step}
+              .value=${currentValue}
+              @input=${handleInput}
+            />
+            <input
+              type="number"
+              class="primaryInputText"
+              .min=${min}
+              .max=${max}
+              .step=${step}
+              .value=${currentValue}
+              @input=${handleInput}
+            />
+          </div>
+        </div>
+      `;
+      render(template, wrapper);
+    };
 
-    const input = document.createElement("input");
-    input.type = "range";
-    input.classList.add("primaryRange");
-    input.min = min;
-    input.max = max;
-    input.step = step;
-    input.value = defaultVal;
-
-    const number = document.createElement("input");
-    number.type = "number";
-    number.classList.add("primaryInputText");
-    number.min = min;
-    number.max = max;
-    number.step = step;
-    number.value = defaultVal;
-
-    const container = document.createElement("div");
-    container.style.display = "flex";
-    container.style.alignItems = "center";
-    container.appendChild(input);
-    container.appendChild(number);
-    wrapper.appendChild(container);
+    const handleInput = (e) => {
+      sync(e.target.value);
+    };
 
     function sync(val) {
-      input.value = val;
-      number.value = val;
-      wrapper.value = parseFloat(val);
+      currentValue = parseFloat(val);
+      wrapper.value = currentValue;
       onChange(wrapper.value);
+      update();
     }
 
-    input.addEventListener("input", () => sync(input.value));
-    number.addEventListener("input", () => sync(number.value));
     if (defaultVal != null) {
       wrapper.value = defaultVal;
       onChange(wrapper.value);
@@ -197,7 +179,8 @@ export class FastComponent {
       wrapper.title = msg;
     };
 
-    return wrapper;
+    update();
+    return wrapper.firstElementChild;
   }
 
   static TextInput(
@@ -209,235 +192,371 @@ export class FastComponent {
     onChange = () => {}
   ) {
     const wrapper = document.createElement("div");
-    wrapper.classList.add("text-input", "card");
-    if (title != null) {
-      const titleEl = document.createElement("div");
-      titleEl.classList.add("primaryTitle");
-      titleEl.textContent = title;
-      wrapper.appendChild(titleEl);
-    }
+    let currentValue = defaultVal;
 
-    if (desc != null) {
-      const descEl = document.createElement("div");
-      descEl.classList.add("primaryDesc");
-      descEl.textContent = desc;
-      wrapper.appendChild(descEl);
-    }
+    const update = () => {
+      const template = html`
+        <div class="text-input card">
+          ${title ? html`<div class="primaryTitle">${title}</div>` : ""}
+          ${desc ? html`<div class="primaryDesc">${desc}</div>` : ""}
+          <label class="primaryLabel">
+            ${label ? label : ""}
+            <input
+              class="primaryInputText"
+              .placeholder=${placeholder}
+              .value=${currentValue}
+              @input=${handleInput}
+            />
+          </label>
+        </div>
+      `;
+      render(template, wrapper);
+    };
 
-    const labelEl = document.createElement("label");
-    if (label != null) {
-      labelEl.classList.add("primaryLabel");
-      labelEl.textContent = label;
-    }
-
-    const input = document.createElement("input");
-    input.classList.add("primaryInputText");
-    input.placeholder = placeholder;
-    if (defaultVal != null) {
-      input.value = defaultVal;
-      onChange(input.value);
-    }
-
-    if (label != null) {
-      labelEl.appendChild(input);
-      wrapper.appendChild(labelEl);
-    } else {
-      wrapper.appendChild(input);
-    }
-
-    input.addEventListener("input", () => {
-      wrapper.value = input.value;
-      onChange(input.value);
-    });
+    const handleInput = (e) => {
+      currentValue = e.target.value;
+      wrapper.value = currentValue;
+      onChange(currentValue);
+    };
 
     wrapper.value = defaultVal;
     wrapper.setWarning = (msg) => {
       wrapper.title = msg;
     };
 
-    return wrapper;
+    update();
+    return wrapper.firstElementChild;
   }
 
   static DropMenu(title, desc, items, defaultVal = "", onChange = () => {}) {
     const wrapper = document.createElement("div");
-    wrapper.classList.add("card");
-    const titleEl = document.createElement("div");
-    titleEl.classList.add("primaryTitle");
-    titleEl.textContent = title;
-    wrapper.appendChild(titleEl);
 
-    const descEl = document.createElement("div");
-    descEl.classList.add("primaryDesc");
-    descEl.textContent = desc;
-    wrapper.appendChild(descEl);
+    const renderOptions = (item, depth = 0) => {
+      return html`
+        <option .value=${item.value}>
+          ${ "—".repeat(depth) + item.content }
+        </option>
+        ${item.sub ? renderOptions(item.sub, depth + 1) : ""}
+      `;
+    };
 
-    const select = document.createElement("select");
-    select.classList.add("primaryInputText");
+    const update = () => {
+      const template = html`
+        <div class="card">
+          <div class="primaryTitle">${title}</div>
+          <div class="primaryDesc">${desc}</div>
+          <select class="primaryInputText" @change=${handleChange}>
+            ${items.map((item) => renderOptions(item))}
+          </select>
+        </div>
+      `;
+      render(template, wrapper);
+      wrapper.querySelector("select").value = defaultVal;
+    };
 
-    function appendOption(item, depth = 0) {
-      const option = document.createElement("option");
-      option.textContent = "—".repeat(depth) + item.content;
-      option.value = item.value;
-      select.appendChild(option);
-      if (item.sub) appendOption(item.sub, depth + 1);
-    }
-
-    items.forEach((item) => appendOption(item));
-
-    if (defaultVal != null) {
-      select.value = defaultVal;
-      onChange(select.value);
-    }
-
-    select.addEventListener("change", () => {
-      wrapper.value = select.value;
+    const handleChange = (e) => {
+      wrapper.value = e.target.value;
       onChange(wrapper.value);
-    });
+    };
 
     wrapper.value = defaultVal;
     wrapper.setWarning = (msg) => {
       wrapper.title = msg;
     };
 
-    wrapper.appendChild(select);
-    return wrapper;
+    update();
+    return wrapper.firstElementChild;
   }
 
-  /**
-   * 创建一个通用的对话框
-   * @param {Object} options - 对话框配置选项
-   * @param {string} options.title - 对话框标题
-   * @param {Function} options.onClose - 关闭回调
-   * @param {Function} options.onRefresh - 刷新回调
-   * @param {Array<{id: string, label: string, content: Function}>} options.tabs - 标签页配置
-   * @returns {HTMLElement} 对话框元素
-   */
   static createDialog(options) {
-    const {
-      title = "",
-      onClose = () => {},
-      onRefresh = () => {},
-      tabs = []
-    } = options;
-
-    // 创建对话框容器
+    const { title = "", onClose = () => {}, onRefresh = () => {}, tabs = [] } = options;
     const dialogOverlay = document.createElement("div");
     dialogOverlay.className = "dialog-overlay";
-    
-    const dialogContent = document.createElement("div");
-    dialogContent.className = "dialog-content";
+    let activeTab = tabs.length > 0 ? tabs[0].id : null;
 
-    // 创建标题栏
-    const titleBar = document.createElement("div");
-    titleBar.className = "dialog-title-bar";
-    
-    const titleText = document.createElement("h2");
-    titleText.textContent = title;
-    titleBar.appendChild(titleText);
-    
-    const closeButton = document.createElement("button");
-    closeButton.className = "dialog-close-button";
-    closeButton.innerHTML = "×";
-    closeButton.onclick = () => {
+    const update = () => {
+      const template = html`
+        <div class="dialog-content">
+          <div class="dialog-title-bar">
+            <h2>${title}</h2>
+            <button class="dialog-close-button" @click=${closeDialog}>×</button>
+          </div>
+          ${tabs.length > 0
+            ? html`
+                <div class="dialog-tabs">
+                  ${tabs.map(
+                    (tabInfo) => html`
+                      <button
+                        class="dialog-tab-button ${activeTab === tabInfo.id
+                          ? "active"
+                          : ""}"
+                        @click=${() => (activeTab = tabInfo.id) && update()}
+                      >
+                        ${tabInfo.label}
+                      </button>
+                    `
+                  )}
+                </div>
+                <div class="dialog-panes">
+                  ${tabs.map(
+                    (tabInfo) => html`
+                      <div
+                        class="dialog-pane"
+                        style="display: ${activeTab === tabInfo.id
+                          ? "block"
+                          : "none"};"
+                      >
+                        ${tabInfo.content()}
+                      </div>
+                    `
+                  )}
+                </div>
+              `
+            : ""}
+        </div>
+      `;
+      render(template, dialogOverlay);
+    };
+
+    const closeDialog = () => {
       onClose();
       dialogOverlay.remove();
     };
-    titleBar.appendChild(closeButton);
-    
-    dialogContent.appendChild(titleBar);
 
-    // 创建标签页
-    if (tabs.length > 0) {
-      const tabsContainer = document.createElement("div");
-      tabsContainer.className = "dialog-tabs";
-
-      const panesContainer = document.createElement("div");
-      panesContainer.className = "dialog-panes";
-
-      // 存储所有面板的引用，方便刷新
-      const panes = {};
-
-      tabs.forEach((tabInfo) => {
-        // 创建标签按钮
-        const tabButton = document.createElement("button");
-        tabButton.textContent = tabInfo.label;
-        tabButton.className = "dialog-tab-button";
-        
-        // 创建面板容器
-        const pane = document.createElement("div");
-        pane.id = `${tabInfo.id}-pane`;
-        pane.className = "dialog-pane";
-        pane.style.display = "none";
-        
-        // 初始化面板内容
-        tabInfo.content(pane);
-        
-        // 存储面板引用
-        panes[tabInfo.id] = pane;
-        
-        // 标签切换事件
-        tabButton.onclick = () => {
-          // 更新标签状态
-          tabsContainer.querySelectorAll(".dialog-tab-button").forEach(btn => {
-            btn.classList.remove("active");
-          });
-          tabButton.classList.add("active");
-          
-          // 更新面板显示
-          panesContainer.querySelectorAll(".dialog-pane").forEach(p => {
-            p.style.display = "none";
-          });
-          pane.style.display = "block";
-        };
-        
-        tabsContainer.appendChild(tabButton);
-        panesContainer.appendChild(pane);
-      });
-
-      dialogContent.appendChild(tabsContainer);
-      dialogContent.appendChild(panesContainer);
-
-      // 默认选中第一个标签
-      if (tabsContainer.firstChild) {
-        tabsContainer.firstChild.click();
-      }
-
-      // 添加刷新方法
-      dialogContent.refresh = () => {
-        tabs.forEach(tabInfo => {
-          if (panes[tabInfo.id]) {
-            panes[tabInfo.id].innerHTML = '';
-            tabInfo.content(panes[tabInfo.id]);
-          }
-        });
-        onRefresh();
-      };
-    }
-
-    dialogOverlay.appendChild(dialogContent);
-
-    // 点击遮罩层关闭对话框
     dialogOverlay.onclick = (event) => {
       if (event.target === dialogOverlay) {
-        onClose();
-        dialogOverlay.remove();
+        closeDialog();
       }
     };
 
-    // 添加键盘事件监听
     const handleKeyPress = (event) => {
       if (event.key === "Escape") {
-        onClose();
-        dialogOverlay.remove();
+        closeDialog();
       }
     };
     document.addEventListener("keydown", handleKeyPress);
 
-    // 清理事件监听
     dialogOverlay.addEventListener("remove", () => {
       document.removeEventListener("keydown", handleKeyPress);
     });
 
+    dialogOverlay.refresh = () => {
+        onRefresh();
+        update();
+    };
+
+    update();
     return dialogOverlay;
+  }
+
+  static ProgressBar(options = {}) {
+    const {
+      label,
+      initial = 0,
+      total = 100,
+      height = "20px",
+      isShowProgress = true,
+      isShowPercent = true,
+      isShowFixedAtMid = false,
+      isGradient = false,
+    } = options;
+
+    const wrapper = document.createElement("div");
+    let currentValue = initial;
+    const events = {};
+    const triggeredMilestones = new Set();
+
+    const fireEvent = (eventName) => {
+      if (events[eventName] && !triggeredMilestones.has(eventName)) {
+        events[eventName].forEach((cb) => cb(wrapper));
+        triggeredMilestones.add(eventName);
+      }
+    };
+
+    const update = () => {
+        const percent = total > 0 ? (currentValue / total) * 100 : 0;
+        const fillStyle = {
+            width: `${percent}%`,
+            background: isGradient ? `rgb(${255 - (percent/100)*255}, ${(percent/100)*255}, 0)` : '#5bc0de'
+        }
+        const textStyle = {
+            left: isShowFixedAtMid ? '50%' : `${percent}%`,
+            transform: `translate(-${isShowFixedAtMid ? 50 : percent}%, -50%)`
+        }
+
+        const template = html`
+            <div class="progress-bar-wrapper">
+                ${label ? html`<div class="progress-bar-label">${label}</div>` : ''}
+                <div class="progress-bar-container" style="height: ${height};">
+                    <div class="progress-bar-fill" style="width: ${fillStyle.width}; background: ${fillStyle.background};"></div>
+                    ${isShowProgress ? html`<div class="progress-bar-text" style="left: ${textStyle.left}; transform: ${textStyle.transform}; font-size: calc(${height} * 0.6);">
+                        ${isShowPercent ? `${Math.round(percent)}%` : `${currentValue}/${total}`}
+                    </div>` : ''}
+                </div>
+            </div>
+        `;
+        render(template, wrapper);
+    }
+
+    wrapper.on = (eventName, callback) => {
+      if (!events[eventName]) {
+        events[eventName] = [];
+      }
+      events[eventName].push(callback);
+    };
+
+    wrapper.updateProgress = (newValue) => {
+      currentValue = Math.max(0, Math.min(total, newValue));
+      update();
+      
+      const percent = (currentValue/total) * 100;
+      if (currentValue <= 0) fireEvent("onEmpty");
+      if (percent >= 25) fireEvent("onQuarter");
+      if (percent >= 50) fireEvent("onHalf");
+      if (percent >= 75) fireEvent("onThreeQuarters");
+      if (currentValue >= total) fireEvent("onFull");
+    };
+    
+    wrapper.resetMilestones = () => triggeredMilestones.clear();
+    wrapper.value = currentValue;
+    wrapper.total = total;
+
+    update();
+    return wrapper.firstElementChild;
+  }
+
+  static CharacterCard(character) {
+    const wrapper = document.createElement("div");
+
+    const update = () => {
+        const template = html`
+            <div class="character-card card">
+                <h3>${i18n.t(character.name) || character.name}</h3>
+                ${FastComponent.ProgressBar({
+                    label: `HP: ${character.status.hp} / ${character.status.maxHp}`,
+                    initial: character.status.hp,
+                    total: character.status.maxHp,
+                    isGradient: true,
+                })}
+                <div class="buffs">
+                    <h4>${i18n.t("battle_buffs_title") || "Buffs"}:</h4>
+                    ${character.status.buffList.length > 0 ? 
+                        character.status.buffList.map(buff => {
+                            const buffName = i18n.t(`buff_${buff.buff}_name`) || buff.buff;
+                            const rounds = Buff_List[buff.buff]?.no_round_limited_symbol ? "Persistent" : `${buff.remainRound}r`;
+                            return html`<div>[B] ${buffName} (${rounds}) - ${i18n.t(Buff_List[buff.buff]?.effect_desc) || ""}</div>`;
+                        }) :
+                        html`<div>${i18n.t("battle_no_buffs") || "No active buffs."}</div>`
+                    }
+                </div>
+            </div>
+        `;
+        render(template, wrapper);
+    }
+
+    update();
+    return wrapper.firstElementChild;
+  }
+
+  static BattleLogContainer() {
+    const wrapper = document.createElement("div");
+    const logs = [];
+    const parseHtml = (string) => {
+      const ele = document.createElement("div")
+      ele.innerHTML = string
+      return ele;
+    }
+    const update = () => {
+      const template = html`
+        <div class="battle-log-container card">
+          <h4>${i18n.t("battle_log_title") || "Battle Log"}</h4>
+          <div class="log-entries">
+            ${logs.map(parseHtml)}
+          </div>
+        </div>
+      `;
+      render(template, wrapper);
+      wrapper.querySelector(".log-entries").scrollTop = wrapper.querySelector(".log-entries").scrollHeight;
+    };
+
+    wrapper.addLog = (logEntry) => {
+      logs.push(logEntry);
+      update();
+    };
+
+    wrapper.clearLog = () => {
+      logs.length = 0; // Clear the array
+      update();
+    };
+
+    update();
+    return wrapper;
+  }
+
+  static AttributeList(status, getPlayerInstance, i18n) {
+    const wrapper = document.createElement("div");
+
+    const update = async () => {
+      const attributesHtml = [];
+      for (const attrKey in status) {
+        if (
+          attrKey === "buffList" ||
+          attrKey === "skillPoints" ||
+          attrKey.startsWith("max") ||
+          !status.hasOwnProperty(attrKey)
+        )
+          continue;
+
+        const attrValue = await getPlayerInstance().getNextAttribute(attrKey);
+        const maxAttrKey =
+          "max" + attrKey.charAt(0).toUpperCase() + attrKey.slice(1);
+
+        let valueContent;
+        if (status.hasOwnProperty(maxAttrKey)) {
+          const maxValue = await getPlayerInstance().getNextAttribute(maxAttrKey);
+          valueContent = html`${attrValue} / ${maxValue}`;
+          const percent = (attrValue / maxValue) * 100;
+          attributesHtml.push(html`
+            <div class="attribute-item">
+              <div class="attribute-name">${i18n.t(`status_${attrKey}`) || attrKey}</div>
+              <div class="attribute-value">${valueContent}</div>
+              <div class="attribute-bar">
+                <div class="attribute-bar-fill" style="width: ${percent}%;"></div>
+              </div>
+            </div>
+          `);
+        } else {
+          valueContent = html`${attrValue}`;
+          attributesHtml.push(html`
+            <div class="attribute-item">
+              <div class="attribute-name">${i18n.t(`status_${attrKey}`) || attrKey}</div>
+              <div class="attribute-value">${valueContent}</div>
+            </div>
+          `);
+        }
+      }
+
+      // Add Buff list
+      if (status.buffList && status.buffList.length > 0) {
+        attributesHtml.push(html`<h3>${i18n.t("dialog_buffs_title") || "Active Buffs"}</h3>`);
+        status.buffList.forEach((buff) => {
+          attributesHtml.push(html`
+            <div class="attribute-item">
+              ${i18n.t(`buff_${buff.buff}_name`) || buff.buff}: ${buff.remainRound} rounds
+            </div>
+          `);
+        });
+      }
+
+      const template = html`
+        <div class="attributes-list">
+          ${attributesHtml}
+        </div>
+      `;
+      render(template, wrapper);
+    };
+
+    update();
+    return wrapper;
   }
 }
