@@ -1,55 +1,84 @@
 import { html, render } from "../ThirdParty/lit-html.js";
+import { FastComponent } from "../Classes/FastComponent.js";
 /**
  * Animations类，提供一些动画函数
  *
  * @class Animations
  */
+
 export class Animations {
-  static createTooltip(content, event, parseHTML = false) {
+  static currentTooltip = null;
+  static createTooltip(content, event, parseHTML = true) {
+    // 如果已有 Tooltip 存在，则移除它
+    if (
+      this.currentTooltip &&
+      document.body.contains(this.currentTooltip.tooltip)
+    ) {
+      this.currentTooltip.removeTooltip();
+    }
+
     const tooltip = document.createElement("div");
     tooltip.className = "tooltip";
-    document.body.appendChild(tooltip);
-
-    const template = parseHTML ? html`${content}` : content;
-    render(template, tooltip);
-
-    gsap.set(tooltip, { 
+    gsap.set(tooltip, {
       left: event.pageX + 10,
       top: event.pageY + 10,
       opacity: 0,
-      scale: 0.95
+      scale: 1,
     });
-    gsap.to(tooltip, { opacity: 1, scale: 1, duration: 0.2 });
+    document.body.appendChild(tooltip);
+    const template = parseHTML
+      ? html`${FastComponent.parseHtml(content)}`
+      : content;
+    render(template, tooltip);
+
+    gsap.to(tooltip, { opacity: 1, scale: 1, duration: 0.3 });
 
     const removeTooltip = () => {
-      gsap.to(tooltip, { opacity: 0, scale: 0.95, duration: 0.2, onComplete: () => {
-        if (tooltip && document.body.contains(tooltip)) {
-          tooltip.remove();
-          document.removeEventListener("mousemove", onDocMove);
-          document.removeEventListener("mousedown", removeTooltip);
-        }
-      }});
+      gsap.to(tooltip, {
+        opacity: 0,
+        scale: 0.2,
+        duration: 0.3,
+        onComplete: () => {
+          if (tooltip && document.body.contains(tooltip)) {
+            tooltip.remove();
+            document.removeEventListener("mousemove", onDocMove);
+            document.removeEventListener("mousedown", removeTooltip);
+          }
+        },
+      });
+
+      // 清理当前 Tooltip 引用
+      if (this.currentTooltip && this.currentTooltip.tooltip === tooltip) {
+        this.currentTooltip = null;
+      }
     };
 
     const onDocMove = (e) => {
       if (
         !e.target.closest(".item-card") &&
         !e.target.closest(".equipped-item") &&
-        !e.target.closest("span[hasDescription]")
+        !e.target.closest("[hasDescription]")
       ) {
         removeTooltip();
       } else {
-        gsap.to(tooltip, { left: e.pageX + 10, top: e.pageY + 10, duration: 0.1 });
+        gsap.to(tooltip, {
+          left: e.pageX + 10,
+          top: e.pageY + 10,
+          duration: 0.1,
+        });
       }
     };
 
     document.addEventListener("mousemove", onDocMove);
     document.addEventListener("mousedown", removeTooltip, { once: true });
 
-    return {
+    // 保存当前 Tooltip 实例
+    this.currentTooltip = {
       tooltip,
       removeTooltip,
     };
+
+    return this.currentTooltip;
   }
 
   static appendUsingDocumentFragment(parentElement, htmlString) {
@@ -240,36 +269,36 @@ export class Animations {
     render(template, message);
 
     const colors = {
-        warning: "#f0ad4e",
-        error: "#d9534f",
-        info: "#5bc0de"
-    }
+      warning: "#f0ad4e",
+      error: "#d9534f",
+      info: "#5bc0de",
+    };
 
     gsap.set(message, {
-        backgroundColor: colors[type] || colors.info,
-        color: "#fff",
-        padding: "10px 20px",
-        borderRadius: "5px",
-        boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
-        x: "100%",
-        opacity: 0
+      backgroundColor: colors[type] || colors.info,
+      color: "#fff",
+      padding: "10px 20px",
+      borderRadius: "5px",
+      boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
+      x: "100%",
+      opacity: 0,
     });
 
     container.insertBefore(message, container.firstChild);
 
     gsap.to(message, { x: 0, opacity: 1, duration: 0.3 });
 
-    gsap.to(message, { 
-        x: "100%", 
-        opacity: 0, 
-        duration: 0.3, 
-        delay: duration / 1000, 
-        onComplete: () => {
-            message.remove();
-            if (container.children.length === 0) {
-                container.remove();
-            }
+    gsap.to(message, {
+      x: "100%",
+      opacity: 0,
+      duration: 0.3,
+      delay: duration / 1000,
+      onComplete: () => {
+        message.remove();
+        if (container.children.length === 0) {
+          container.remove();
         }
+      },
     });
   }
   static breakElement(element) {
@@ -279,7 +308,7 @@ export class Animations {
     gsap.set(element, { perspective: 400 });
 
     gsap.to(chars, {
-      duration: 2,
+      duration: 0.4,
       opacity: 0,
       physics2D: {
         velocity: "random(200, 600)",
@@ -289,7 +318,42 @@ export class Animations {
       stagger: {
         each: 0.1,
         from: "random",
-      }
+      },
+      onComplete: () => {
+        gsap.to(element, {
+          duration: 0.5,
+          opacity: 0,
+          scale: 0.7,
+          ease: "power1.in",
+          onComplete: () => {
+            if (element && element.parentNode) {
+              element.parentNode.removeChild(element);
+            }
+          },
+        });
+      },
+    });
+  }
+  static showFloatingText(text, x, y, color = 0xffffff) {
+    const floatingText = document.createElement("div");
+    floatingText.className = "floating-text";
+    floatingText.style.left = `${x}px`;
+    floatingText.style.top = `${y}px`;
+    // 使用 lit-html 构建内容
+    const template = html`${text}`;
+    render(template, floatingText);
+
+    document.body.appendChild(floatingText);
+
+    // 使用 GSAP 创建动画
+    gsap.to(floatingText, {
+      duration: 1,
+      y: -40, // 向上浮动 40px
+      opacity: 0,
+      ease: "power2.out",
+      onComplete: () => {
+        floatingText.remove();
+      },
     });
   }
 }

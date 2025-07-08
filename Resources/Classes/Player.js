@@ -31,6 +31,10 @@ export class Player extends Monster {
     // Call Monster constructor with player-specific name and undefined for monsterDrops.
     super(status, "Player", undefined);
 
+    this._status.name = status.name || "";
+    this._status.gender = status.gender === undefined ? 1 : status.gender;
+    this.gender = 1;
+    this.gameDiffculty = "normal";
     // Override or set player-specific default status values.
     // Note: `this._status` is already initialized by `super()`, so we're modifying it here.
     this._status.maxHp = status.maxHp || 75;
@@ -486,6 +490,29 @@ export class Player extends Monster {
     
     return totalUseTime >= amount;
   }
+  setPlayerName(name) {
+    this.name = name;
+  }
+  getPlayerName() {
+    if (this.name) {
+      return this.name;
+    }
+    return this.status.gender === 1 ? i18n.t("default_character_full_name") : i18n.t("default_character_full_name_female");
+  }
+
+  getPlayerFirstName() {
+    if (this.name) {
+      return this.name.split(' ')[1];
+    }
+    return this.status.gender === 1 ? i18n.t("default_character_first_name") : i18n.t("default_character_first_name_female");
+  }
+
+  getPlayerLastName() {
+    if (this.name) {
+      return this.name.split(' ')[0];
+    }
+    return this.status.gender === 1 ? i18n.t("default_character_last_name") : i18n.t("default_character_last_name_female");
+  }
 
   /**
    * Serializes the player's current state to a JSON string for saving.
@@ -503,35 +530,66 @@ export class Player extends Monster {
           after: (self, game) => {
             const entity = self.data.entity; // The player
             const serializedState = {
-              skills: isNew // If new game, provide default skills, else serialize learned skills
-                ? ["HeavyHit"] // Example default skill
-                : entity.skills
-                    .filter((skill) => skill != null) // Filter out any nulls if possible
-                    .map((skill) => skill.id), // Store by ID
-              inventory: Object.keys(entity.inventory).map((id) => {
+              skills: isNew
+              ? ["HeavyHit"] // 默认技能
+              : entity.skills
+                .filter((skill) => skill != null)
+                .map((skill) => skill.id),
+              inventory: isNew
+              ? [] // 新玩家背包为空
+              : Object.keys(entity.inventory).map((id) => {
                 return entity.inventory[id].map((item) => {
                   return {
-                    id: item.item_id,
-                    use_time: item.use_time,
-                    item_status: item.item_status
+                  id: item.item_id,
+                  use_time: item.use_time,
+                  item_status: item.item_status
                   };
                 });
-              }).flat(), // Flatten the array of arrays if inventory structure results in it
-              equipment: Object.keys(entity.equipment).map((slot) => {
+                }).flat(),
+              equipment: isNew
+              ? [] // 新玩家无装备
+              : Object.keys(entity.equipment).map((slot) => {
                 if (entity.equipment[slot]) {
                   return {
-                    id: entity.equipment[slot].item_id,
-                    slot: slot,
-                    item_status: entity.equipment[slot].item_status
+                  id: entity.equipment[slot].item_id,
+                  slot: slot,
+                  item_status: entity.equipment[slot].item_status
                   };
                 }
-                return null; // Ensure consistent return type
-              }).filter(item => item != null), // Remove nulls if any slot was empty
-              equipmentBonus: entity.equipmentBonus,
-              status: entity.status, // The raw _status object might be better to avoid proxy issues during serialization
-              flags: entity.flags,
-              currentLocation: entity.currentLocation,
-              carrying_coins: entity.carrying_coins,
+                return null;
+                }).filter(item => item != null),
+              equipmentBonus: isNew
+              ? {} // 新玩家无装备加成
+              : entity.equipmentBonus,
+              status: isNew
+              ? {
+                name: "",
+                gender: 1,
+                maxHp: 75,
+                strength: 5,
+                intelligence: 10,
+                charm: 45,
+                luck: 2,
+                cognition: 100,
+                maxCognition: 100,
+                energy: 100,
+                maxEnergy: 100,
+                hp: 75,
+                level: 1,
+                currentExp: 0,
+                skillPoints: 0,
+                buffList: []
+                }
+              : entity.status,
+              flags: isNew
+              ? {}
+              : entity.flags,
+              currentLocation: isNew
+              ? "#ExampleScene"
+              : entity.currentLocation,
+              carrying_coins: isNew
+              ? 0
+              : entity.carrying_coins,
             };
             self.data.result = JSON.stringify(serializedState);
           },
@@ -571,6 +629,8 @@ export class Player extends Monster {
             if (savedState.status.hasOwnProperty("level")) entity._status.level = savedState.status.level;
             if (savedState.status.hasOwnProperty("currentExp")) entity._status.currentExp = savedState.status.currentExp;
             if (savedState.status.hasOwnProperty("skillPoints")) entity._status.skillPoints = savedState.status.skillPoints;
+            if (savedState.status.hasOwnProperty("name")) entity._status.name = savedState.status.name;
+            if (savedState.status.hasOwnProperty("gender")) entity._status.gender = savedState.status.gender;
 
 
             if (savedState.hasOwnProperty("skills")) {
@@ -725,5 +785,85 @@ export class Player extends Monster {
         )
       );
     }
+  }
+
+  /**
+   * 战斗中每回合energy自然恢复
+   * @returns {number} 实际恢复量
+   */
+  recoverEnergyInBattle() {
+    // 影响因素：strength最大，其次energy剩余量、hp剩余量、cognition、maxHp
+    const s = this.status.strength || 0;
+    const maxHp = this.status.maxHp || 1;
+    const hp = this.status.hp || 0;
+    const cognition = this.status.cognition || 0;
+    const maxEnergy = this.status.maxEnergy || 1;
+    const energy = this.status.energy || 0;
+    // 计算各项权重
+    const w_strength = 0.5;
+    const w_energy = 0.2;
+    const w_hp = 0.15;
+    const w_cognition = 0.1;
+    const w_maxHp = 0.05;
+    // cognition修正
+    let cognitionFactor = 1;
+    if (cognition > 50) cognitionFactor = 1.2;
+    else if (cognition < 50 && cognition >= 25) cognitionFactor = 0.8;
+    else if (cognition < 25) cognitionFactor = 0.5;
+    // 归一化
+    const norm_energy = energy / maxEnergy;
+    const norm_hp = hp / maxHp;
+    // 恢复量
+    let recover = (
+      s * w_strength +
+      norm_energy * maxEnergy * w_energy +
+      norm_hp * maxHp * w_hp +
+      cognition * w_cognition +
+      maxHp * w_maxHp
+    ) * cognitionFactor;
+    recover = Math.max(1, Math.floor(recover));
+    this.status.energy = Math.min(maxEnergy, this.status.energy + recover);
+    return recover;
+  }
+  /**
+   * 脱战后energy立即完全恢复
+   */
+  recoverEnergyFull() {
+    this.status.energy = this.status.maxEnergy;
+  }
+
+  /**
+   * 检查并自动管理认知相关debuff
+   * 在认知属性变化后调用
+   */
+  checkCognitionDebuff() {
+    const c = this.status.cognition || 0;
+    // 先移除所有相关debuff
+    if (this.hasBuff && this.removeBuff) {
+      if (this.hasBuff('Confused')) this.removeBuff('Confused');
+      if (this.hasBuff('VeryConfused')) this.removeBuff('VeryConfused');
+      if (this.hasBuff('Madness')) this.removeBuff('Madness');
+    }
+    // 添加对应debuff
+    if (c < 25) {
+      this.addBuff && this.addBuff('Madness', 'cognition', 9999);
+    } else if (c < 50) {
+      this.addBuff && this.addBuff('VeryConfused', 'cognition', 9999);
+    } else if (c < 75) {
+      this.addBuff && this.addBuff('Confused', 'cognition', 9999);
+    }
+  }
+
+  // 在认知属性变动后自动调用
+  setCognition(value) {
+    this.status.cognition = value;
+    this.checkCognitionDebuff();
+  }
+
+  /**
+   * 判断是否拥有某个buff
+   */
+  hasBuff(buffName) {
+    return this.status.buffList && this.status.buffList.some(b => b.buff === buffName);
   }
 }

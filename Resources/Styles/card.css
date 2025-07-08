@@ -1,0 +1,109 @@
+body.dark-theme {
+  --bg-color: black;
+  --text-color: white;
+  --card-bg-color: rgb(40, 40, 40);
+  --card-border-color: rgb(77, 77, 77);
+  --button-bg-color: rgb(77, 77, 77);
+  --button-border-color: rgb(123, 123, 123);
+  --button-text-color: white;
+  --button-hover-border-color: gold;
+  --button-hover-text-color: gold;
+  --link-color: orange;
+  --primary-title-color: white;
+  --primary-desc-color: gold;
+  --primary-label-color: gold;
+  --input-bg-color: black;
+  --input-border-color: gray;
+  --input-text-color: white;
+  --scrollbar-color: #888;
+  --scrollbar-thumb-color: #555;
+  --generic-border-color: rgb(123, 123, 123);
+  --highlight-bg-color: #00abff;
+  --before-start-title-color: #eee;
+  --before-start-bg-color: rgba(0, 0, 0, 1);
+  --before-start-bg-fadeout-color: rgba(0, 0, 0, 0);
+}
+
+body.dark-theme .scene-card {
+  background-color: var(--card-bg-color);
+  border: 1px solid var(--card-border-color);
+  color: var(--text-color);
+}
+
+body.dark-theme .GameView {
+  color: var(--text-color);
+  background-color: var(--bg-color);
+}
+
+body.dark-theme button {
+  background-color: var(--button-bg-color);
+  border: 1px solid var(--button-border-color);
+  color: var(--button-text-color);
+}
+
+body.dark-theme button.active,
+body.dark-theme button:hover {
+  border-color: var(--button-hover-border-color);
+  color: var(--button-hover-text-color);
+}
+
+body.dark-theme input {
+  background-color: var(--input-bg-color);
+  border: 1px solid var(--input-border-color);
+  color: var(--input-text-color);
+}
+
+body.light-theme .scene-card {
+  background-color: var(--card-bg-color);
+  border: 1px solid var(--card-border-color);
+  color: var(--text-color);
+}
+
+body.light-theme .GameView {
+  color: var(--text-color);
+  background-color: var(--bg-color);
+}
+
+body.light-theme button {
+  background-color: var(--button-bg-color);
+  border: 1px solid var(--button-border-color);
+  color: var(--button-text-color);
+}
+
+body.light-theme button.active,
+body.light-theme button:hover {
+  border-color: var(--button-hover-border-color);
+  color: var(--button-hover-text-color);
+}
+
+body.light-theme input {
+  background-color: var(--input-bg-color);
+  border: 1px solid var(--input-border-color);
+  color: var(--input-text-color);
+}
+
+.scene-card {
+  background: var(--card-bg-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 15px;
+  color: var(--text-color);
+  padding: 20px;
+  margin: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  height: 100%;
+}
+
+.status-card {
+  background: var(--card-bg-color);
+  border: 1px solid var(--card-border-color);
+  border-radius: 15px;
+  color: var(--text-color);
+  padding: 20px;
+  margin: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.story-text {
+  margin: 10px;
+  padding: 10px;
+} 

@@ -10,13 +10,15 @@ export class Skill {
    * @param {number} [learningCost=3] - 学习技能的消耗成本，默认为3。
    * @param {string} [skillName="Skill"] - 技能的名称，默认为"Skill"。
    * @param {string} [skillDesc="A Skill"] - 技能的描述，默认为"A Skill"。
+   * @param {object} [cost=null] - 技能的消耗，默认为null。
    */
   constructor(
     id,
     skillCD = 3,
     learningCost = 3,
     skillName = "Skill",
-    skillDesc = "A Skill"
+    skillDesc = "A Skill",
+    cost = null
   ) {
     this.id = id;
     this.isCoolingDown = false; // 是否处于冷却状态
@@ -27,6 +29,7 @@ export class Skill {
     this.CDCounter = 0; // 冷却计数器
     this.isPassive = false; // 被动技能标识符
     this.isAutoTrigger = false; // 是否自动发动(仅针对主动技能)
+    this.cost = cost; // 新增cost属性
   }
 
   /**
@@ -54,6 +57,43 @@ export class Skill {
     return this;
   }
   /**
+   * 判断技能是否可用（消耗是否满足）
+   * @param {Player|Monster} source
+   * @param {Player|Monster} target
+   * @returns {boolean}
+   */
+  canUse(source, target) {
+    if (!this.cost) return true;
+    // 属性消耗
+    if (this.cost.hp && source.status.hp < this.cost.hp) return false;
+    if (this.cost.energy && source.status.energy < this.cost.energy) return false;
+    if (this.cost.mp && source.status.mp < this.cost.mp) return false;
+    // 物品消耗
+    if (this.cost.item) {
+      if (!source.hasItem || !source.hasItem(this.cost.item.id, this.cost.item.amount || 1)) return false;
+    }
+    // 自定义消耗
+    if (typeof this.cost.custom === 'function') {
+      if (!this.cost.custom(source, target)) return false;
+    }
+    return true;
+  }
+  /**
+   * 实际扣除消耗
+   */
+  applyCost(source, target) {
+    if (!this.cost) return;
+    if (this.cost.hp) source.status.hp = Math.max(0, source.status.hp - this.cost.hp);
+    if (this.cost.energy) source.status.energy = Math.max(0, source.status.energy - this.cost.energy);
+    if (this.cost.mp) source.status.mp = Math.max(0, source.status.mp - this.cost.mp);
+    if (this.cost.item && source.removeItem) {
+      source.removeItem(this.cost.item.id, this.cost.item.amount || 1);
+    }
+    if (typeof this.cost.custom === 'function') {
+      this.cost.custom(source, target, true); // 约定第三参数true为实际扣除
+    }
+  }
+  /**
    * 当技能被使用时触发的函数。
    * 子类可重写此方法以定义技能的效果。
    * @param {Player|Monster} source - 触发技能的来源对象（玩家或怪物）。
@@ -77,17 +117,13 @@ export class Skill {
    * @returns {object} - 通常是 GameEvent 或一个空对象，取决于 onUse 的实现和冷却逻辑。
    */
   triggerSkill(source, target, battle) {
-    if (!this.isCoolingDown) {
-      // Note: For this skill to go on cooldown via the GameEvent mechanism,
-      // the onUse() method MUST return a GameEvent object (or any object with an addHook method).
-      // The cooldown will be initiated in the 'after' hook of that event.
-      // If onUse() performs a synchronous action and does not return such an object,
-      // it will NOT automatically go on cooldown through this path.
-      const next = this.onUse(source, target, battle); // Pass battle context
+    if (!this.isCoolingDown && this.canUse(source, target)) {
+      this.applyCost(source, target);
+      const next = this.onUse(source, target, battle);
       if (next && next.addHook) {
-        if (next.data && battle) { // Ensure data object exists if we are to add battle to it
+        if (next.data && battle) {
              next.data.battle = battle;
-        } else if (battle) { // If no data object, create one
+        } else if (battle) {
             next.data = { battle };
         }
         return next.addHook("after", async (self, game) => {

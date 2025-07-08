@@ -41,9 +41,34 @@ export class broken_hero_sword extends Item {
       is_equipable: true,
       equip_slot: "hand",
       is_enhanceable: true,
+      enhancement_materials: {
+        enhancement_stone: 1,
+        gold: 10,
+      },
       item_status: {
         strength: 5,
-      }
+      },
+    });
+  }
+}
+
+/**
+ * 强化石
+ * 用于强化装备的材料
+ */
+export class enhancement_stone extends Item {
+  constructor() {
+    super({
+      item_id: "enhancement_stone",
+      item_name: i18n.t("item_enhancement_stone_name"),
+      item_desc: i18n.t("item_enhancement_stone_desc"),
+      is_usable: false,
+      is_equipable: false,
+      is_tradeable: true,
+      item_status: {
+        sell: 10,
+        buy: 50,
+      },
     });
   }
 }
@@ -361,6 +386,7 @@ export class underwear_lower_male extends Item {
 export const item_list = {
   "berry": berry,
   "broken_hero_sword": broken_hero_sword,
+  "enhancement_stone": enhancement_stone,
   
   "school_uniform_upper_female": school_uniform_upper_female,
   "school_uniform_lower_female": school_uniform_lower_female,

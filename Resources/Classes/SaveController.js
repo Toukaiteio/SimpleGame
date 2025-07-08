@@ -18,7 +18,20 @@ export class SaveController {
           player: getPlayerInstance(),
         },
         {
-          after: (self, game) => {
+          after: async (self, game) => {
+            // 在应用JSON之前，手动重建物品实例
+            if (runningSave.player.inventory) {
+              const newInventory = {};
+              for (const itemId in runningSave.player.inventory) {
+                newInventory[itemId] = [];
+                for (const itemData of runningSave.player.inventory[itemId]) {
+                  const itemInstance = await getGameInstance().createItem(itemData);
+                  newInventory[itemId].push(itemInstance);
+                }
+              }
+              runningSave.player.inventory = newInventory;
+            }
+
             self.data.player
             .applySelfJson(runningSave.player)
             .addHook("after", () => {
@@ -77,20 +90,37 @@ export class SaveController {
     }
     return SaveController.instance;
   }
-  static getSaveSlots() {
+  // 获取原始存档对象（不实例化Save）
+  static getSaveSlotsRaw() {
     const saves = JSON.parse(localStorage.getItem("game-local-saves")) || {};
+    // 保证有6个槽
+    for (let i = 1; i <= 6; i++) {
+      if (!saves[`slot${i}`]) saves[`slot${i}`] = null;
+    }
+    return saves;
+  }
+  // 获取实例化后的存档对象
+  static getSaveSlots() {
+    const saves = SaveController.getSaveSlotsRaw();
     const result = {};
-    if (saves instanceof Object) {
-      for (const i in saves) {
-        // Corrected Save instantiation
-        result[i] = new Save(
-          saves[i].player,
-          saves[i].location,
-          saves[i].hookList || [], // Ensure hookList is an array
-          saves[i].saveName
+    for (let i = 1; i <= 6; i++) {
+      const slot = saves[`slot${i}`];
+      if (slot) {
+        result[`slot${i}`] = new Save(
+          slot.player,
+          slot.location,
+          slot.hookList || [],
+          slot.saveName,
+          slot.meta || {}
         );
+      } else {
+        result[`slot${i}`] = null;
       }
-      return result;
-    } else return {};
+    }
+    return result;
+  }
+  // 存档到指定槽
+  static saveToSlot(save, slot) {
+    save.save(slot);
   }
 }

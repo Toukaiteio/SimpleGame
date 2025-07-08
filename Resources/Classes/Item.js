@@ -1,5 +1,6 @@
 import { getPlayerInstance, getGameInstance } from "../Scripts/Shared.js";
 import { itemManager } from "./ItemManager.js";
+import { i18n } from "./I18n.js";
 
 /**
  * @class Item
@@ -18,9 +19,11 @@ export class Item {
     is_equipable = false,
     equip_slot = null,
     is_enhanceable = false,
-    enhance_storage = {},
+    enhancement_level = 0,
+    enhancement_materials = {},
     is_tradeable = false,
     item_status = {},
+    use_time = 1,
     onEquip = null,
     onUnequip = null,
     onUse = null,
@@ -34,16 +37,25 @@ export class Item {
     this.is_equipable = is_equipable;
     this.equip_slot = equip_slot;
     this.is_enhanceable = is_enhanceable;
-    this.enhance_storage = enhance_storage;
     this.is_tradeable = is_tradeable;
-    this.item_status = item_status;
     this.owner = owner;
-    this.use_time = 1;
+    this.use_time = use_time;
+
+    // 强化相关
+    this.enhancement_level = enhancement_level;
+    this.enhancement_materials = enhancement_materials;
+    this.base_item_status = { ...item_status }; // 存储原始属性
+    this.item_status = item_status;
 
     // 回调函数
     this.onEquip = onEquip;
     this.onUnequip = onUnequip;
     this.onUse = onUse;
+
+    // 如果加载时强化等级>0，则应用强化加成
+    if (this.enhancement_level > 0) {
+      this.applyEnhancementBonus();
+    }
   }
 
   /**
@@ -129,54 +141,114 @@ export class Item {
 
   /**
    * 强化物品
-   * @param {string} targetItemId - 目标强化物品ID
-   * @param {Player|Monster} [target=getPlayerInstance()] - 强化目标
-   * @returns {Promise} 强化结果
+   * @returns {Promise<{success: boolean, message: string}>} 强化结果
    */
-  async enhance(targetItemId, target = getPlayerInstance()) {
+  async enhance() {
     if (!this.is_enhanceable) {
-      return false;
+      return { success: false, message: "This item cannot be enhanced." };
     }
 
+    const player = getPlayerInstance();
     const game = getGameInstance();
-    return game.createEvent(
-      game.eventWrapper(
-        "itemEnhance",
-        { item: this, targetItemId, target },
-        {
-          before: async (self) => {
-            await game.triggerEvent("beforeItemEnhance", {
-              item: this,
-              targetItemId,
-              target,
-            });
-          },
-          during: async (self) => {
-            // 创建新物品
-            const newItem = await Item.create(targetItemId);
-            if (!newItem) {
-              throw new Error(`Invalid enhancement target: ${targetItemId}`);
-            }
+    const materials = this.getEnhancementCost();
+    const allItems = player.getItems();
 
-            // 移除原物品
-            await itemManager.removeItem(this, target);
-
-            // 添加新物品
-            await itemManager.addItem(newItem, target);
-
-            return newItem;
-          },
-          after: async (self) => {
-            await game.triggerEvent("afterItemEnhance", {
-              item: this,
-              targetItemId,
-              target,
-              result: self.result,
-            });
-          },
+    // 检查材料
+    for (const materialId in materials) {
+      const requiredAmount = materials[materialId];
+      if (materialId === "gold") {
+        if ((player.gold || 0) < requiredAmount) {
+          return {
+            success: false,
+            message: i18n.f("error_not_enough_gold", {
+              required: requiredAmount,
+              has: player.gold || 0,
+            }),
+          };
         }
-      )
-    );
+      } else {
+        const totalAmount = allItems
+          .filter((i) => i.item_id === materialId)
+          .reduce((sum, item) => sum + item.use_time, 0);
+        if (totalAmount < requiredAmount) {
+          return {
+            success: false,
+            message: i18n.f("error_not_enough_materials", {
+              required: requiredAmount,
+              name: i18n.t(`item_${materialId}_name`) || materialId,
+              has: totalAmount,
+            }),
+          };
+        }
+      }
+    }
+
+    // 消耗材料
+    for (const materialId in materials) {
+      const requiredAmount = materials[materialId];
+      if (materialId === "gold") {
+        player.gold -= requiredAmount;
+      } else {
+        await itemManager.removeItemById(player, materialId, requiredAmount);
+      }
+    }
+
+    // 强化物品
+    this.enhancement_level++;
+    this.applyEnhancementBonus();
+
+    await game.triggerEvent("afterItemEnhance", { item: this });
+
+    return {
+      success: true,
+      message: i18n.t("enhance_success") || "Enhancement successful!",
+    };
+  }
+
+  /**
+   * 应用强化加成
+   */
+  applyEnhancementBonus() {
+    // 示例加成逻辑：每级为每个数字属性+1。可以根据需要实现更复杂的逻辑。
+    for (const stat in this.base_item_status) {
+      if (typeof this.base_item_status[stat] === "number") {
+        const baseValue = this.base_item_status[stat];
+        this.item_status[stat] = baseValue + this.enhancement_level;
+      }
+    }
+  }
+
+  /**
+   * 获取下一次强化所需的材料
+   * @returns {Object} 材料ID和数量
+   */
+  getEnhancementCost() {
+    const cost = {};
+    for (const materialId in this.enhancement_materials) {
+      const baseCost = this.enhancement_materials[materialId];
+      // 示例成本逻辑：成本随等级增加
+      cost[materialId] = baseCost * (this.enhancement_level + 1);
+    }
+    return cost;
+  }
+
+  /**
+   * 获取下一个强化等级的属性
+   * @returns {Object | null} 属性对象或null
+   */
+  getNextEnhancementStats() {
+    if (!this.is_enhanceable) return null;
+
+    const nextStats = { ...this.item_status };
+    const nextLevel = this.enhancement_level + 1;
+
+    for (const stat in this.base_item_status) {
+      if (typeof this.base_item_status[stat] === "number") {
+        const baseValue = this.base_item_status[stat];
+        nextStats[stat] = baseValue + nextLevel;
+      }
+    }
+    return nextStats;
   }
 
   /**
@@ -184,7 +256,11 @@ export class Item {
    * @returns {string} 物品名称
    */
   getName() {
-    return itemManager.getItemName(this);
+    const name = itemManager.getItemName(this);
+    if (this.is_enhanceable && this.enhancement_level > 0) {
+      return `${name} +${this.enhancement_level}`;
+    }
+    return name;
   }
 
   /**
@@ -205,45 +281,43 @@ export class Item {
   }
 
   /**
-   * 获取物品的关键信息JSON
-   * @returns {string} JSON字符串
+   * 获取物品的关键信息JSON，用于保存
+   * @returns {Object}
    */
   toJSON() {
     return {
       item_id: this.item_id,
-      item_name: this.item_name,
-      item_desc: this.item_desc,
       use_time: this.use_time,
-      item_status: this.item_status,
-      equip_slot: this.equip_slot,
-      is_equipable: this.is_equipable,
-      is_usable: this.is_usable,
-      is_enhanceable: this.is_enhanceable,
-      is_tradeable: this.is_tradeable,
+      enhancement_level: this.enhancement_level,
     };
   }
 
   /**
    * 从数据创建物品实例
-   * @param {string|Object} data - 物品ID或物品数据
+   * @param {string|Object} data - 物品ID或从存档加载的物品数据
    * @returns {Promise<Item>} 物品实例
    */
   static async create(data) {
     const game = getGameInstance();
     let itemData;
+    let savedData = {};
 
     if (typeof data === "string") {
-      // 如果传入的是物品ID，从游戏数据中获取物品定义
+      // 从ID创建新物品
       itemData = await game.getItemData(data);
     } else {
-      // 如果传入的是物品数据对象，直接使用
-      itemData = data;
+      // 从存档数据恢复物品
+      itemData = await game.getItemData(data.item_id);
+      savedData = data;
     }
 
     if (!itemData) {
-      throw new Error(`Invalid item data: ${data}`);
+      throw new Error(`Invalid item data: ${JSON.stringify(data)}`);
     }
 
-    return new Item(itemData);
+    // 合并基础数据和存档数据
+    const finalData = { ...itemData, ...savedData };
+
+    return new Item(finalData);
   }
 }

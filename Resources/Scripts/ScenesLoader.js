@@ -11,7 +11,7 @@ export async function loadScenes() {
     const sceneFiles = [
         'GameHomePage.js',
         "GameStoryTeller.js",
-        // "GameSaveList.js",
+        "GameSaveList.js",
         // 可以在这里添加其他场景文件
     ];
     // 子场景文件的路径

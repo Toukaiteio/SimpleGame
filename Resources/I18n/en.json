@@ -84,5 +84,13 @@
     "message_inventory_full": "Inventory is full!",
     "message_cannot_equip": "Cannot equip this item!",
     "message_cannot_use": "Cannot use this item!",
-    "message_item_broken": "Item is broken!"
+    "message_item_broken": "Item is broken!",
+
+    "next_stats": "Next Level Stats",
+    "enhancement_cost": "Enhancement Cost",
+    "you_have": "You have",
+    "gold": "Gold",
+    "close": "Close",
+    "error_not_enough_gold": "Not enough gold! Required: <%required%>, Have: <%has%>",
+    "error_not_enough_materials": "Not enough <%name%>! Required: <%required%>, Have: <%has%>"
 }

@@ -4,7 +4,7 @@ import {
   getUIInstance,
 } from "../Shared.js";
 import { itemManager } from "../../Classes/ItemManager.js";
-
+import { Animations } from "../../Classes/Animations.js";
 /**
  * 物品效果系统
  * 提供与新物品管理系统兼容的物品效果处理
@@ -18,14 +18,14 @@ export const ItemBuffs = {
   async GeneralOnEquip(self, target) {
     // 使用新的物品管理器装备物品
     await itemManager.equipItem(self, target);
-    
+
     // 更新UI
     const ui = getUIInstance();
     if (ui.currentScene.playerBag) {
       ui.currentScene.playerBag.updateSelf(target);
     }
   },
-  
+
   /**
    * 通用卸下效果
    * @param {Item} self 物品实例
@@ -34,14 +34,9 @@ export const ItemBuffs = {
   async GeneralOnUnwield(self, target) {
     // 使用新的物品管理器卸下装备
     await itemManager.unequipItem(self, target);
-    
-    // 更新UI
-    const ui = getUIInstance();
-    if (ui.currentScene.playerBag) {
-      ui.currentScene.playerBag.updateSelf(target);
-    }
+
   },
-  
+
   /**
    * 通用使用效果
    * @param {Item} self 物品实例
@@ -50,14 +45,8 @@ export const ItemBuffs = {
   async GeneralOnUse(self, target) {
     // 使用新的物品管理器使用物品
     await itemManager.useItem(self, target);
-    
-    // 更新UI
-    const ui = getUIInstance();
-    if (ui.currentScene.playerBag) {
-      ui.currentScene.playerBag.updateSelf(target);
-    }
   },
-  
+
   /**
    * 恢复生命值效果
    * @param {Object} status 物品状态
@@ -78,15 +67,21 @@ export const ItemBuffs = {
               }
             },
             after: async (self) => {
-              const ui = getUIInstance();
-              ui.showFloatingText(`+${self.data.amount} HP`, self.data.target.x, self.data.target.y - 20, 0x00ff00);
-            }
+              const centerX = window.innerWidth / 2;
+              const centerY = window.innerHeight / 2;
+              Animations.showFloatingText(
+                `+${self.data.amount} HP`,
+                centerX,
+                centerY,
+                0x00ff00
+              );
+            },
           }
         )
       );
     }
   },
-  
+
   /**
    * 恢复魔法值效果
    * @param {Object} status 物品状态
@@ -107,15 +102,21 @@ export const ItemBuffs = {
               }
             },
             after: async (self) => {
-              const ui = getUIInstance();
-              ui.showFloatingText(`+${self.data.amount} MP`, self.data.target.x, self.data.target.y - 20, 0x0000ff);
-            }
+              const centerX = window.innerWidth / 2;
+              const centerY = window.innerHeight / 2;
+              Animations.showFloatingText(
+                `+${self.data.amount} MP`,
+                centerX,
+                centerY,
+                0x0000ff
+              );
+            },
           }
         )
       );
     }
   },
-  
+
   /**
    * 临时增加属性效果
    * @param {Object} status 物品状态
@@ -125,25 +126,35 @@ export const ItemBuffs = {
     if (status.temp_boost) {
       const game = getGameInstance();
       const boostDuration = status.boost_duration || 30; // 默认30秒
-      
+
       for (const [stat, value] of Object.entries(status.temp_boost)) {
         if (target.status[stat] !== undefined) {
           const originalValue = target.status[stat];
-          
+
           // 应用增益
           target.status[stat] += value;
-          
+
           // 显示效果
           const ui = getUIInstance();
-          ui.showFloatingText(`${stat} +${value}`, target.x, target.y - 20, 0xffff00);
-          
+          Animations.showFloatingText(
+            `${stat} +${value}`,
+            target.x,
+            target.y - 20,
+            0xffff00
+          );
+
           // 设置定时器恢复原值
           setTimeout(() => {
             target.status[stat] = originalValue;
-            ui.showFloatingText(`${stat} 效果结束`, target.x, target.y - 20, 0xffff00);
+            Animations.showFloatingText(
+              `${stat} 效果结束`,
+              target.x,
+              target.y - 20,
+              0xffff00
+            );
           }, boostDuration * 1000);
         }
       }
     }
-  }
+  },
 };

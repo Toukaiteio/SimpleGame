@@ -35,7 +35,9 @@ export class Monster {
       charm: status.charm || 0,
       luck: status.luck || 0,
       cognition: status.cognition || 0, // Default cognition if not provided
+      maxCognition: status.maxCognition || 100,
       energy: status.energy || 1, // Default energy if not provided
+      maxEnergy: status.maxEnergy || 100,
       buffList: [], // Initialize buff list
     };
 
@@ -299,6 +301,173 @@ export class Monster {
               // Ensure hp doesn't go below 0
               0,
               Math.min(entity.status.hp + healAmount, entity.status.maxHp) // Ensure hp doesn't exceed maxHp
+            );
+          },
+        }
+      )
+    );
+  }
+  getName() {
+    if (this.name) {
+      return this.name;
+    }
+    return i18n.t("default_unknown_monster_name");
+  }
+  /**
+   * Restores Cognition to the monster, up to its maximum Cognition.
+   * @param {number} amount The amount of Cognition to restore.
+   * @returns {GameEvent} The created game event for restoring Cognition.
+   */
+  restoreCognition(amount) {
+    const game = getGameInstance();
+    return game.createEvent(
+      game.eventWrapper(
+        "restoreCognition",
+        { amount, entity: this },
+        {
+          after: async (self, game) => {
+            const entity = self.data.entity;
+            const restoreAmount = self.data.amount;
+            entity.status.cognition = Math.max(
+              0,
+              Math.min(
+                entity.status.cognition + restoreAmount,
+                entity.status.maxCognition
+              )
+            );
+          },
+        }
+      )
+    );
+  }
+
+  /**
+   * Restores Energy to the monster, up to its maximum Energy.
+   * @param {number} amount The amount of Energy to restore.
+   * @returns {GameEvent} The created game event for restoring Energy.
+   */
+  restoreEnergy(amount) {
+    const game = getGameInstance();
+    return game.createEvent(
+      game.eventWrapper(
+        "restoreEnergy",
+        { amount, entity: this },
+        {
+          after: async (self, game) => {
+            const entity = self.data.entity;
+            const restoreAmount = self.data.amount;
+            entity.status.energy = Math.max(
+              0,
+              Math.min(
+                entity.status.energy + restoreAmount,
+                entity.status.maxEnergy
+              )
+            );
+          },
+        }
+      )
+    );
+  }
+
+  /**
+   * Restores MP to the monster, up to its maximum MP.
+   * @param {number} amount The amount of MP to restore.
+   * @returns {GameEvent} The created game event for restoring MP.
+   */
+  restoreMp(amount) {
+    const game = getGameInstance();
+    return game.createEvent(
+      game.eventWrapper(
+        "restoreMp",
+        { amount, entity: this },
+        {
+          after: async (self, game) => {
+            const entity = self.data.entity;
+            const restoreAmount = self.data.amount;
+            entity.status.mp = Math.max(
+              0,
+              Math.min(entity.status.mp + restoreAmount, entity.status.maxMp)
+            );
+          },
+        }
+      )
+    );
+  }
+
+  /**
+   * Restores Cognition to the monster, up to its maximum Cognition.
+   * @param {number} amount The amount of Cognition to restore.
+   * @returns {GameEvent} The created game event for restoring Cognition.
+   */
+  restoreCognition(amount) {
+    const game = getGameInstance();
+    return game.createEvent(
+      game.eventWrapper(
+        "restoreCognition",
+        { amount, entity: this },
+        {
+          after: async (self, game) => {
+            const entity = self.data.entity;
+            const restoreAmount = self.data.amount;
+            entity.status.cognition = Math.max(
+              0,
+              Math.min(
+                entity.status.cognition + restoreAmount,
+                entity.status.maxCognition
+              )
+            );
+          },
+        }
+      )
+    );
+  }
+
+  /**
+   * Restores Energy to the monster, up to its maximum Energy.
+   * @param {number} amount The amount of Energy to restore.
+   * @returns {GameEvent} The created game event for restoring Energy.
+   */
+  restoreEnergy(amount) {
+    const game = getGameInstance();
+    return game.createEvent(
+      game.eventWrapper(
+        "restoreEnergy",
+        { amount, entity: this },
+        {
+          after: async (self, game) => {
+            const entity = self.data.entity;
+            const restoreAmount = self.data.amount;
+            entity.status.energy = Math.max(
+              0,
+              Math.min(
+                entity.status.energy + restoreAmount,
+                entity.status.maxEnergy
+              )
+            );
+          },
+        }
+      )
+    );
+  }
+
+  /**
+   * Restores MP to the monster, up to its maximum MP.
+   * @param {number} amount The amount of MP to restore.
+   * @returns {GameEvent} The created game event for restoring MP.
+   */
+  restoreMp(amount) {
+    const game = getGameInstance();
+    return game.createEvent(
+      game.eventWrapper(
+        "restoreMp",
+        { amount, entity: this },
+        {
+          after: async (self, game) => {
+            const entity = self.data.entity;
+            const restoreAmount = self.data.amount;
+            entity.status.mp = Math.max(
+              0,
+              Math.min(entity.status.mp + restoreAmount, entity.status.maxMp)
             );
           },
         }

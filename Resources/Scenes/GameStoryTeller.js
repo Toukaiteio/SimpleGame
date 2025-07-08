@@ -9,7 +9,7 @@ import { log } from "../Classes/Utils.js";
 import { SaveController } from "../Classes/SaveController.js";
 import { i18n } from "../Classes/I18n.js";
 import { Animations } from "../Classes/Animations.js";
-import { FastComponent } from "../Classes/FastCompoent.js";
+import { FastComponent } from "../Classes/FastComponent.js";
 import { html, render } from "../ThirdParty/lit-html.js";
 
 /**
@@ -77,6 +77,12 @@ class GameStoryTeller extends Scene {
     this.saveButton = saveButton;
     funcsContainer.appendChild(saveButton);
 
+    // 存档管理按钮
+    const saveManagerButton = document.createElement("button");
+    saveManagerButton.innerHTML = i18n.t("save_manager_button") || "存档";
+    saveManagerButton.onclick = () => this.showSaveDialog();
+    funcsContainer.appendChild(saveManagerButton);
+
     // 角色信息按钮
     const characterInfoButton = document.createElement("button");
     characterInfoButton.setAttribute("id", "character_info_button");
@@ -95,18 +101,19 @@ class GameStoryTeller extends Scene {
    * @param {Function} onItemClick - 物品点击回调
    */
   createInventoryGrid(inventory, onItemClick) {
-    const items = getPlayerInstance().getItems();
-
+    const items = getPlayerInstance().getItems().filter(item => item.use_time > 0);
+    console.log(items);
+    console.log(inventory);
     const gridTemplate = html`
       <div class="item-grid">
         ${items.map(item => html`
           <div class="item-card"
             @click=${() => onItemClick(item)}
             @mouseenter=${(e) => item.showTooltip(e)}
-            class="${item.is_equipable ? 'equipable' : ''} ${item.is_usable ? 'usable' : ''} ${item.is_enhanceable ? 'enhanceable' : ''}"
+            class="item-card ${item.is_equipable ? 'equipable' : ''} ${item.is_usable ? 'usable' : ''} ${item.is_enhanceable ? 'enhanceable' : ''}"
           >
             <div class="item-icon">📦</div>
-            <div class="item-name">${item.getName()}</div>
+            <div class="item-name">${FastComponent.noHtml(item.getName())}</div>
             <div class="item-count">x${item.use_time}</div>
             ${Object.keys(item.item_status).length > 0 ? html`
               <div class="item-status-indicator">
@@ -308,57 +315,84 @@ class GameStoryTeller extends Scene {
    * @param {Item} item - 物品对象
    */
   showEnhanceDialog(item) {
-    const dialog = document.createElement("div");
-    dialog.className = "enhance-dialog";
-    
-    const title = document.createElement("h2");
-    title.textContent = i18n.t("enhance_dialog_title") || "Enhance Item";
-    dialog.appendChild(title);
-    
-    // 显示当前属性
-    const currentStats = document.createElement("div");
-    currentStats.className = "current-stats";
-    currentStats.innerHTML = `<h3>${i18n.t("current_stats") || "Current Stats"}</h3>`;
-    
-    for (const [stat, value] of Object.entries(item.item_status)) {
-      if (stat !== "sell" && stat !== "buy") {
-        const statDiv = document.createElement("div");
-        statDiv.textContent = `${i18n.t(`status_${stat}`) || stat}: ${value}`;
-        currentStats.appendChild(statDiv);
-      }
+    const player = getPlayerInstance();
+
+    const renderEnhanceDialog = (itemToEnhance,self) => {
+      const cost = itemToEnhance.getEnhancementCost();
+      const nextStats = itemToEnhance.getNextEnhancementStats();
+      const allItems = player.getItems();
+      let canEnhance = true;
+
+      const costList = Object.entries(cost).map(([materialId, amount]) => {
+        let hasAmount, name;
+        if (materialId === 'gold') {
+            hasAmount = player.carrying_coins || 0;
+            name = i18n.t('gold') || 'Gold';
+        } else {
+            hasAmount = allItems.filter(i => i.item_id === materialId).reduce((sum, i) => sum + i.use_time, 0);
+            name = i18n.t(`item_${materialId}_name`) || materialId;
+        }
+        const hasEnough = hasAmount >= amount;
+        if (!hasEnough) canEnhance = false;
+        return { name, hasEnough, amount, hasAmount };
+      });
+
+      const dialogTemplate = html`
+        <div class="enhance-dialog-top">
+          <div class="enhance-stats-card stats-current">
+            <h4>${i18n.t("current_stats") || "Current Stats"}</h4>
+            <ul>
+              ${Object.entries(itemToEnhance.item_status).map(([stat, value]) => 
+                html`<li>${i18n.t(`status_${stat}`) || stat}: ${value}</li>`
+              )}
+            </ul>
+          </div>
+          <i class="material-icons arrow-icon">arrow_forward</i>
+          <div class="enhance-stats-card stats-next">
+            <h4>${i18n.t("next_stats") || "Next Level Stats"}</h4>
+            ${nextStats ? html`
+              <ul>
+                ${Object.entries(nextStats).map(([stat, value]) => 
+                  html`<li>${i18n.t(`status_${stat}`) || stat}: ${value}</li>`
+                )}
+              </ul>
+            ` : html`<p>${i18n.t("max_level") || "Max Level"}</p>`}
+          </div>
+        </div>
+
+        <div class="enhance-cost-card">
+            <h4>${i18n.t("enhancement_cost") || "Enhancement Cost"}</h4>
+            <ul>
+                ${costList.map(c => html`<li class="${c.hasEnough ? 'sufficient' : 'insufficient'}">${c.name}: ${c.amount} (${i18n.t('you_have')||'You have'}: ${c.hasAmount})</li>`)}
+            </ul>
+        </div>
+
+        <div class="dialog-actions">
+            <button @click=${async () => {
+              const result = await itemToEnhance.enhance();
+              if (result.success) {
+                Animations.displayMessage("success", result.message);
+                self.refresh();
+                this.updatePlayerInfo();
+              } else {
+                Animations.displayMessage("error", result.message);
+              }
+            }} .disabled=${!canEnhance}>${i18n.t("action_enhance_confirm") || "Enhance"}</button>
+            <button @click=${() => dialog.closeDialog()}>${i18n.t("close") || "Close"}</button>
+        </div>
+      `;
+      return dialogTemplate;
     }
-    dialog.appendChild(currentStats);
-    
-    // 强化选项
-    const enhanceOptions = document.createElement("div");
-    enhanceOptions.className = "enhance-options";
-    enhanceOptions.innerHTML = `<h3>${i18n.t("enhance_options") || "Enhance Options"}</h3>`;
-    
-    // 添加强化选项按钮
-    const enhanceBtn = document.createElement("button");
-    enhanceBtn.textContent = i18n.t("action_enhance_confirm") || "Enhance";
-    enhanceBtn.onclick = async () => {
-      const player = getPlayerInstance();
-      const result = await itemManager.enhanceItem(item, player);
-      if (result.success) {
-        Animations.displayMessage("success", i18n.t("enhance_success") || "Enhancement successful!");
-        this.updatePlayerInfo();
-      } else {
-        Animations.displayMessage("error", result.message || (i18n.t("enhance_failed") || "Enhancement failed!"));
-      }
-      dialog.remove();
-    };
-    enhanceOptions.appendChild(enhanceBtn);
-    
-    dialog.appendChild(enhanceOptions);
-    
-    // 关闭按钮
-    const closeBtn = document.createElement("button");
-    closeBtn.className = "close-btn";
-    closeBtn.textContent = "×";
-    closeBtn.onclick = () => dialog.remove();
-    dialog.appendChild(closeBtn);
-    
+
+    const dialog = FastComponent.createDialog({
+        title: i18n.t("enhance_dialog_title") || "Enhance Item",
+        content: (dialogWrapper) => {
+            dialogWrapper.classList.add('enhance-dialog-content');
+            return renderEnhanceDialog(item, dialogWrapper);
+        },
+        onClose: () => {}
+    });
+
     document.body.appendChild(dialog);
   }
   
@@ -367,7 +401,7 @@ class GameStoryTeller extends Scene {
    */
   updatePlayerInfo() {
     if (this.playerInfoDialog && document.body.contains(this.playerInfoDialog)) {
-      this.playerInfoDialog.querySelector(".dialog-content").refresh();
+      this.playerInfoDialog.refresh();
     }
   }
 
@@ -383,7 +417,7 @@ class GameStoryTeller extends Scene {
       this.playerInfoDialog &&
       document.body.contains(this.playerInfoDialog)
     ) {
-      this.playerInfoDialog.querySelector(".dialog-content").refresh();
+      this.playerInfoDialog.refresh();
       return;
     }
 
@@ -524,9 +558,15 @@ class GameStoryTeller extends Scene {
           );
         }
 
+        // 根据是否允许存档，设置按钮的 disabled 状态
+        const allowSave = this.subScenes[this.currentSubScene].isAllowSave;
         // 保存按钮
-        if (this.subScenes[this.currentSubScene].isAllowSave)
-          this.addComponent("general_funcs", this.funcsContainer);
+        this.saveButton.disabled = !allowSave;
+        // 存档管理按钮
+        const saveManagerButton = this.funcsContainer.querySelector("button:nth-child(2)");
+        if (saveManagerButton) saveManagerButton.disabled = !allowSave;
+        // 添加功能按钮区域
+        this.addComponent("general_funcs", this.funcsContainer);
 
         // 整合剧情内容和玩家信息
         const mainContentContainer = document.createElement("div");
@@ -574,6 +614,80 @@ class GameStoryTeller extends Scene {
     this.subScenes = {};
     this.currentSubScene = null;
     log("All sub scenes have been cleared.");
+  }
+
+  showSaveDialog() {
+    const saves = SaveController.getSaveSlots();
+    const dialog = document.createElement("div");
+    dialog.className = "dialog-overlay";
+    dialog.innerHTML = `
+      <div class="dialog-content">
+        <div class="dialog-title-bar">
+          <h2>${i18n.t("save_manager_title") || "选择存档栏"}</h2>
+          <button class="dialog-close-button">×</button>
+        </div>
+        <div class="save-slot-grid">
+          ${[1,2,3,4,5,6].map(i => {
+            const slot = saves[`slot${i}`];
+            let title = i === 1 ? (i18n.t("quick_save") || "快速存档") : `${i18n.t("save_slot") || "存档栏"} ${i}`;
+            if (slot) {
+              return `<div class='save-slot-card${i===1?" quick-save":""}'>
+                <div class='save-slot-title'>${title}</div>
+                <div class='save-slot-meta'>
+                  <div>${i18n.t("save_time") || "时间"}: ${new Date(slot.meta.time).toLocaleString()}</div>
+                  <div>${i18n.t("character_name") || "主角"}: ${slot.meta.characterName || "-"}</div>
+                  <div>${i18n.t("mode") || "模式"}: ${slot.meta.mode || "-"}</div>
+                </div>
+                <button class='save-slot-overwrite' data-slot='${i}'>${i18n.t("overwrite") || "覆盖"}</button>
+              </div>`;
+            } else {
+              return `<div class='save-slot-card${i===1?" quick-save":""}'>
+                <div class='save-slot-title'>${title}</div>
+                <div class='save-slot-meta empty'>${i18n.t("empty_slot") || "空"}</div>
+                <button class='save-slot-new' data-slot='${i}'>${i18n.t("new_save") || "新建存档"}</button>
+              </div>`;
+            }
+          }).join('')}
+        </div>
+      </div>
+    `;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".dialog-close-button").onclick = () => dialog.remove();
+    // 绑定按钮事件
+    dialog.querySelectorAll(".save-slot-overwrite").forEach(btn => {
+      btn.onclick = async () => {
+        const slot = btn.getAttribute("data-slot");
+        await SaveController.updateSave();
+        SaveController.saveToSlot(SaveController.instance.runningSave, slot);
+        Animations.displayMessage("success", i18n.t("save_success") || "存档成功");
+        dialog.remove();
+      };
+    });
+    dialog.querySelectorAll(".save-slot-new").forEach(btn => {
+      btn.onclick = async () => {
+        const slot = btn.getAttribute("data-slot");
+        await SaveController.updateSave();
+        SaveController.saveToSlot(SaveController.instance.runningSave, slot);
+        Animations.displayMessage("success", i18n.t("save_success") || "存档成功");
+        dialog.remove();
+      };
+    });
+  }
+
+  // 自动存档机制
+  startAutoSaveTimer() {
+    if (this._autoSaveTimer) clearTimeout(this._autoSaveTimer);
+    const checkAndSave = async () => {
+      if (getGameInstance().allowSave) {
+        await SaveController.updateSave();
+        SaveController.saveToSlot(SaveController.instance.runningSave, 1);
+        Animations.displayMessage("info", i18n.t("auto_save_success") || "已自动存档到快速存档栏");
+        this._autoSaveTimer = setTimeout(checkAndSave, 30 * 60 * 1000);
+      } else {
+        this._autoSaveTimer = setTimeout(checkAndSave, 5 * 60 * 1000);
+      }
+    };
+    this._autoSaveTimer = setTimeout(checkAndSave, 30 * 60 * 1000);
   }
 }
 

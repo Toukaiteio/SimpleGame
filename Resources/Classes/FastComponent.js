@@ -1,5 +1,6 @@
 import { i18n } from "./I18n.js";
 import { html, render } from "../ThirdParty/lit-html.js";
+import { getPlayerInstance } from "../Scripts/Shared.js";
 
 export class FastComponent {
   static RadioGroup(title, choices, defaultIndex = 0, onChange = () => {}) {
@@ -16,6 +17,7 @@ export class FastComponent {
                 <button
                   class="primaryButton ${selected === i ? "active" : ""}"
                   @click=${() => handleClick(i)}
+                  ?disabled=${!!choice.disabled}
                 >
                   ${choice.content}
                 </button>
@@ -234,7 +236,7 @@ export class FastComponent {
     const renderOptions = (item, depth = 0) => {
       return html`
         <option .value=${item.value}>
-          ${ "—".repeat(depth) + item.content }
+          ${"—".repeat(depth) + item.content}
         </option>
         ${item.sub ? renderOptions(item.sub, depth + 1) : ""}
       `;
@@ -269,7 +271,13 @@ export class FastComponent {
   }
 
   static createDialog(options) {
-    const { title = "", onClose = () => {}, onRefresh = () => {}, tabs = [] } = options;
+    const {
+      title = "",
+      onClose = () => {},
+      onRefresh = () => {},
+      tabs = [],
+      content = null,
+    } = options;
     const dialogOverlay = document.createElement("div");
     dialogOverlay.className = "dialog-overlay";
     let activeTab = tabs.length > 0 ? tabs[0].id : null;
@@ -281,7 +289,9 @@ export class FastComponent {
             <h2>${title}</h2>
             <button class="dialog-close-button" @click=${closeDialog}>×</button>
           </div>
-          ${tabs.length > 0
+          ${content
+            ? html`${content(dialogOverlay)}`
+            : tabs.length > 0
             ? html`
                 <div class="dialog-tabs">
                   ${tabs.map(
@@ -339,10 +349,10 @@ export class FastComponent {
     dialogOverlay.addEventListener("remove", () => {
       document.removeEventListener("keydown", handleKeyPress);
     });
-
+    dialogOverlay.closeDialog = closeDialog;
     dialogOverlay.refresh = () => {
-        onRefresh();
-        update();
+      onRefresh();
+      update();
     };
 
     update();
@@ -355,6 +365,7 @@ export class FastComponent {
       initial = 0,
       total = 100,
       height = "20px",
+      customBgColor = "#5bc0de",
       isShowProgress = true,
       isShowPercent = true,
       isShowFixedAtMid = false,
@@ -374,29 +385,41 @@ export class FastComponent {
     };
 
     const update = () => {
-        const percent = total > 0 ? (currentValue / total) * 100 : 0;
-        const fillStyle = {
-            width: `${percent}%`,
-            background: isGradient ? `rgb(${255 - (percent/100)*255}, ${(percent/100)*255}, 0)` : '#5bc0de'
-        }
-        const textStyle = {
-            left: isShowFixedAtMid ? '50%' : `${percent}%`,
-            transform: `translate(-${isShowFixedAtMid ? 50 : percent}%, -50%)`
-        }
+      const percent = total > 0 ? (currentValue / total) * 100 : 0;
+      const fillStyle = {
+        width: `${percent}%`,
+        background: isGradient
+          ? `rgb(${255 - (percent / 100) * 255}, ${(percent / 100) * 255}, 0)`
+          : customBgColor,
+      };
+      const textStyle = {
+        left: isShowFixedAtMid ? "50%" : `${percent}%`,
+        transform: `translate(-${isShowFixedAtMid ? 50 : percent}%, -50%)`,
+      };
 
-        const template = html`
-            <div class="progress-bar-wrapper">
-                ${label ? html`<div class="progress-bar-label">${label}</div>` : ''}
-                <div class="progress-bar-container" style="height: ${height};">
-                    <div class="progress-bar-fill" style="width: ${fillStyle.width}; background: ${fillStyle.background};"></div>
-                    ${isShowProgress ? html`<div class="progress-bar-text" style="left: ${textStyle.left}; transform: ${textStyle.transform}; font-size: calc(${height} * 0.6);">
-                        ${isShowPercent ? `${Math.round(percent)}%` : `${currentValue}/${total}`}
-                    </div>` : ''}
-                </div>
-            </div>
-        `;
-        render(template, wrapper);
-    }
+      const template = html`
+        <div class="progress-bar-wrapper">
+          ${label ? html`<div class="progress-bar-label">${label}</div>` : ""}
+          <div class="progress-bar-container" style="height: ${height};">
+            <div
+              class="progress-bar-fill"
+              style="width: ${fillStyle.width}; background: ${fillStyle.background};"
+            ></div>
+            ${isShowProgress
+              ? html`<div
+                  class="progress-bar-text"
+                  style="left: ${textStyle.left}; transform: ${textStyle.transform}; font-size: calc(${height} * 0.6);"
+                >
+                  ${isShowPercent
+                    ? `${Math.round(percent)}%`
+                    : `${currentValue}/${total}`}
+                </div>`
+              : ""}
+          </div>
+        </div>
+      `;
+      render(template, wrapper);
+    };
 
     wrapper.on = (eventName, callback) => {
       if (!events[eventName]) {
@@ -408,15 +431,15 @@ export class FastComponent {
     wrapper.updateProgress = (newValue) => {
       currentValue = Math.max(0, Math.min(total, newValue));
       update();
-      
-      const percent = (currentValue/total) * 100;
+
+      const percent = (currentValue / total) * 100;
       if (currentValue <= 0) fireEvent("onEmpty");
       if (percent >= 25) fireEvent("onQuarter");
       if (percent >= 50) fireEvent("onHalf");
       if (percent >= 75) fireEvent("onThreeQuarters");
       if (currentValue >= total) fireEvent("onFull");
     };
-    
+
     wrapper.resetMilestones = () => triggeredMilestones.clear();
     wrapper.value = currentValue;
     wrapper.total = total;
@@ -429,54 +452,95 @@ export class FastComponent {
     const wrapper = document.createElement("div");
 
     const update = () => {
-        const template = html`
-            <div class="character-card card">
-                <h3>${i18n.t(character.name) || character.name}</h3>
-                ${FastComponent.ProgressBar({
-                    label: `HP: ${character.status.hp} / ${character.status.maxHp}`,
-                    initial: character.status.hp,
-                    total: character.status.maxHp,
-                    isGradient: true,
-                })}
-                <div class="buffs">
-                    <h4>${i18n.t("battle_buffs_title") || "Buffs"}:</h4>
-                    ${character.status.buffList.length > 0 ? 
-                        character.status.buffList.map(buff => {
-                            const buffName = i18n.t(`buff_${buff.buff}_name`) || buff.buff;
-                            const rounds = Buff_List[buff.buff]?.no_round_limited_symbol ? "Persistent" : `${buff.remainRound}r`;
-                            return html`<div>[B] ${buffName} (${rounds}) - ${i18n.t(Buff_List[buff.buff]?.effect_desc) || ""}</div>`;
-                        }) :
-                        html`<div>${i18n.t("battle_no_buffs") || "No active buffs."}</div>`
-                    }
-                </div>
-            </div>
-        `;
-        render(template, wrapper);
-    }
-
-    update();
-    return wrapper.firstElementChild;
-  }
-
-  static BattleLogContainer() {
-    const wrapper = document.createElement("div");
-    const logs = [];
-    const parseHtml = (string) => {
-      const ele = document.createElement("div")
-      ele.innerHTML = string
-      return ele;
-    }
-    const update = () => {
       const template = html`
-        <div class="battle-log-container card">
-          <h4>${i18n.t("battle_log_title") || "Battle Log"}</h4>
-          <div class="log-entries">
-            ${logs.map(parseHtml)}
+        <div class="character-card card">
+          <h3>
+            ${character.getPlayerName
+              ? character.getPlayerName()
+              : character.getName()}
+          </h3>
+          ${FastComponent.ProgressBar({
+            label: `HP: ${character.status.hp} / ${character.status.maxHp}`,
+            initial: character.status.hp,
+            total: character.status.maxHp,
+            isGradient: true,
+          })}
+          ${character.status.hasOwnProperty("cognition")
+            ? FastComponent.ProgressBar({
+                label: `Cognition: ${character.status.cognition} / ${character.status.maxCognition}`,
+                initial: character.status.cognition,
+                total: character.status.maxCognition,
+                isGradient: false,
+                customBgColor: "#4a90e2",
+              })
+            : ""}
+          ${character.status.hasOwnProperty("energy")
+            ? FastComponent.ProgressBar({
+                label: `Energy: ${character.status.energy} / ${character.status.maxEnergy}`,
+                initial: character.status.energy,
+                total: character.status.maxEnergy,
+                isGradient: false,
+                customBgColor: "#f5a623",
+              })
+            : ""}
+          ${character.status.hasOwnProperty("mp")
+            ? FastComponent.ProgressBar({
+                label: `MP: ${character.status.mp} / ${character.status.maxMp}`,
+                initial: character.status.mp,
+                total: character.status.maxMp,
+                isGradient: false,
+                customBgColor: "#7e57c2",
+              })
+            : ""}
+          <div class="buffs">
+            <h4>${i18n.t("battle_buffs_title") || "Buffs"}:</h4>
+            ${character.status.buffList.length > 0
+              ? character.status.buffList.map((buff) => {
+                  const buffName =
+                    i18n.t(`buff_${buff.buff}_name`) || buff.buff;
+                  const rounds = Buff_List[buff.buff]?.no_round_limited_symbol
+                    ? "Persistent"
+                    : `${buff.remainRound}r`;
+                  return html`<div>
+                    [B] ${buffName} (${rounds}) -
+                    ${i18n.t(Buff_List[buff.buff]?.effect_desc) || ""}
+                  </div>`;
+                })
+              : html`<div>
+                  ${i18n.t("battle_no_buffs") || "No active buffs."}
+                </div>`}
           </div>
         </div>
       `;
       render(template, wrapper);
-      wrapper.querySelector(".log-entries").scrollTop = wrapper.querySelector(".log-entries").scrollHeight;
+    };
+
+    update();
+    return wrapper.firstElementChild;
+  }
+  static parseHtml = (string) => {
+    const ele = document.createElement("div");
+    ele.innerHTML = string;
+    return ele;
+  };
+  static noHtml = (string) => {
+    const ele = document.createElement("div");
+    ele.innerHTML = string;
+    return ele.textContent;
+  };
+  static BattleLogContainer() {
+    const wrapper = document.createElement("div");
+    const logs = [];
+    const update = () => {
+      const template = html`
+        <div class="battle-log-container card">
+          <h4>${i18n.t("battle_log_title") || "Battle Log"}</h4>
+          <div class="log-entries">${logs.map(this.parseHtml)}</div>
+        </div>
+      `;
+      render(template, wrapper);
+      wrapper.querySelector(".log-entries").scrollTop =
+        wrapper.querySelector(".log-entries").scrollHeight;
     };
 
     wrapper.addLog = (logEntry) => {
@@ -513,15 +577,22 @@ export class FastComponent {
 
         let valueContent;
         if (status.hasOwnProperty(maxAttrKey)) {
-          const maxValue = await getPlayerInstance().getNextAttribute(maxAttrKey);
+          const maxValue = await getPlayerInstance().getNextAttribute(
+            maxAttrKey
+          );
           valueContent = html`${attrValue} / ${maxValue}`;
           const percent = (attrValue / maxValue) * 100;
           attributesHtml.push(html`
             <div class="attribute-item">
-              <div class="attribute-name">${i18n.t(`status_${attrKey}`) || attrKey}</div>
+              <div class="attribute-name">
+                ${i18n.t(`status_${attrKey}`) || attrKey}
+              </div>
               <div class="attribute-value">${valueContent}</div>
               <div class="attribute-bar">
-                <div class="attribute-bar-fill" style="width: ${percent}%;"></div>
+                <div
+                  class="attribute-bar-fill"
+                  style="width: ${percent}%;"
+                ></div>
               </div>
             </div>
           `);
@@ -529,7 +600,9 @@ export class FastComponent {
           valueContent = html`${attrValue}`;
           attributesHtml.push(html`
             <div class="attribute-item">
-              <div class="attribute-name">${i18n.t(`status_${attrKey}`) || attrKey}</div>
+              <div class="attribute-name">
+                ${i18n.t(`status_${attrKey}`) || attrKey}
+              </div>
               <div class="attribute-value">${valueContent}</div>
             </div>
           `);
@@ -538,20 +611,21 @@ export class FastComponent {
 
       // Add Buff list
       if (status.buffList && status.buffList.length > 0) {
-        attributesHtml.push(html`<h3>${i18n.t("dialog_buffs_title") || "Active Buffs"}</h3>`);
+        attributesHtml.push(
+          html`<h3>${i18n.t("dialog_buffs_title") || "Active Buffs"}</h3>`
+        );
         status.buffList.forEach((buff) => {
           attributesHtml.push(html`
             <div class="attribute-item">
-              ${i18n.t(`buff_${buff.buff}_name`) || buff.buff}: ${buff.remainRound} rounds
+              ${i18n.t(`buff_${buff.buff}_name`) || buff.buff}:
+              ${buff.remainRound} rounds
             </div>
           `);
         });
       }
 
       const template = html`
-        <div class="attributes-list">
-          ${attributesHtml}
-        </div>
+        <div class="attributes-list">${attributesHtml}</div>
       `;
       render(template, wrapper);
     };

@@ -40,4 +40,59 @@ export const Buff_List = {
       };
     },
   },
+  Confused: {
+    name: "混乱",
+    effect_desc: "伤害降低10%",
+    effect_timing: ["onAttack", "during"],
+    effect_type: "debuff",
+    effect_hook_wrapper: function (entity) {
+      return async function (self, game) {
+        if (self.data.source === entity && self.data.attackPower) {
+          self.data.attackPower = Math.floor(self.data.attackPower * 0.9);
+        }
+      };
+    },
+  },
+  VeryConfused: {
+    name: "非常混乱",
+    effect_desc: "伤害降低20%",
+    effect_timing: ["onAttack", "during"],
+    effect_type: "debuff",
+    effect_hook_wrapper: function (entity) {
+      return async function (self, game) {
+        if (self.data.source === entity && self.data.attackPower) {
+          self.data.attackPower = Math.floor(self.data.attackPower * 0.8);
+        }
+      };
+    },
+  },
+  Madness: {
+    name: "抓狂",
+    effect_desc: "伤害降低50%，攻击后有概率自伤",
+    effect_timing: ["onAttack", "during"],
+    effect_type: "debuff",
+    effect_hook_wrapper: function (entity) {
+      return async function (self, game) {
+        if (self.data.source === entity && self.data.attackPower) {
+          self.data.attackPower = Math.floor(self.data.attackPower * 0.5);
+        }
+      };
+    },
+    after_hook_wrapper: function (entity) {
+      return async function (self, game) {
+        if (self.data.source === entity && self.data.attackPower) {
+          if (SeededRandom.randomProbability(30)) {
+            // 30%概率自伤，伤害为本次攻击力50%
+            const selfDamage = Math.floor(self.data.attackPower * 0.5);
+            entity.status.hp = Math.max(0, entity.status.hp - selfDamage);
+            const ui = getUIInstance();
+            const scene = ui.getCurrentScene();
+            if (scene && scene.addBattleLog) {
+              scene.addBattleLog(`${entity.getPlayerName ? entity.getPlayerName() : entity.getName()} 因抓狂自伤，损失${selfDamage}点生命！`);
+            }
+          }
+        }
+      };
+    }
+  },
 };

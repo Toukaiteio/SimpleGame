@@ -1,17 +1,8 @@
-import { HookContext, HookList } from "../Scripts/HookRegister.js";
-import {
-  getStoryTellerElement,
-  getUIInstance,
-  getPlayerInstance,
-} from "../Scripts/Shared.js";
-import { i18n } from "./I18n.js";
-import { Animations } from "./Animations.js";
-import { SubScene } from "./SubScene.js";
-import { UI } from "./UI.js";
-import { GameEvent, EventState, EventPriority } from "./GameEvent.js";
-import { InGameEvent } from "./InGameEvent.js";
-import { log } from "./Utils.js";
-
+import { getItemData } from "../Scripts/Items/Index.js";
+import { Item } from "./Item.js";
+import { GameEvent,EventState } from "./GameEvent.js";
+import { log } from "../Classes/Utils.js";
+import { HookContext } from "../Scripts/HookRegister.js";
 /**
  * 游戏类
  *
@@ -83,7 +74,7 @@ export class Game {
    */
   insertEvent(event) {
     this.applyGlobalTriggers(event);
-    
+
     if (!this.isEventQueueRunning) {
       // 如果当前没有事件在运行，立即执行
       this.currentEvent = event;
@@ -91,11 +82,11 @@ export class Game {
     } else {
       // 否则加入队列
       this.eventQueue.push(event);
-      
+
       // 按优先级排序队列
       this.eventQueue.sort((a, b) => b.priority - a.priority);
     }
-    
+
     return event;
   }
 
@@ -345,7 +336,15 @@ export class Game {
     try {
       // 执行事件逻辑
       await event.execute(this);
-      
+
+      // 在事件完全结束后，安全地处理延迟事件
+      if (event.deferredEvents.length > 0) {
+        event.deferredEvents.sort((a, b) => b.priority - a.priority);
+        for (const deferredEvent of event.deferredEvents) {
+          this.insertEvent(deferredEvent); // 使用insertEvent以确保它们进入正确的队列
+        }
+      }
+
       // 事件完成后处理队列中的下一个事件
       if (this.eventQueue.length > 0) {
         const nextEvent = this.eventQueue.shift();
@@ -356,7 +355,7 @@ export class Game {
       }
     } catch (error) {
       console.error(`Error executing event ${event.type}:`, error);
-      
+
       // 即使出错也继续处理队列
       if (this.eventQueue.length > 0) {
         const nextEvent = this.eventQueue.shift();
@@ -365,7 +364,7 @@ export class Game {
         this.isEventQueueRunning = false;
         this.currentEvent = null;
       }
-      
+
       throw error;
     }
   }
@@ -400,6 +399,8 @@ export class Game {
     return parents;
   }
 
+  
+
   /**
    * 更新游戏时间，每次调用增加游戏内的时间
    * @param {number} minutes - 增加的时间（以分钟为单位）
@@ -423,9 +424,16 @@ export class Game {
     eventName = "emptyEvent",
     options = {},
     callbacks = void 0,
-    timings = void 0
+    timings = void 0,
+    timeout = void 0
   ) {
-    return new GameEvent(eventName, options, callbacks, timings);
+    return new GameEvent(
+      eventName,
+      options,
+      callbacks,
+      timings,
+      timeout
+    );
   }
 
   /**
@@ -471,5 +479,23 @@ export class Game {
     this.gameTimer = setInterval(() => {
       this.updateTime();
     }, 60000);
+  }
+
+  /**
+   * 从数据创建物品实例
+   * @param {string|Object} data - 物品ID或从存档加载的物品数据
+   * @returns {Promise<Item>} 物品实例
+   */
+  async createItem(data) {
+    return Item.create(data);
+  }
+
+  /**
+   * 获取物品数据
+   * @param {string} itemId - 物品ID
+   * @returns {Promise<Object|null>} 物品数据或null
+   */
+  async getItemData(itemId) {
+    return getItemData(itemId);
   }
 }

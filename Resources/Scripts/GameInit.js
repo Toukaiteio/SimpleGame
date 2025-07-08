@@ -34,24 +34,19 @@ i18n.loadLanguage("cn").then(() => {
   };
   log("Class of 'Game' and 'UI' initialized.");
 
-  game.addGlobalTrigger("renderScene", "after", async (self, game) => {
-    if (self.data.container) {
-      // Animations.clearAllTooltips();
-      const nodeList = [
-        ...self.data.container.querySelectorAll("span[hasDescription]"),
-      ];
-      if (nodeList.length > 0) {
-        for (const node of nodeList) {
-          if (!node.hasTooltip) {
-            const description = node.getAttribute("data-description")
-              ? node.getAttribute("data-description")
-              : i18n.th(node.getAttribute("data-description-at"));
-            node.addEventListener("mouseenter", function (e) {
-              Animations.createTooltip( description, e, true);
-            });
-          }
-        }
-      }
+  // 监听全局 mousemove 事件，鼠标进入目标元素时统一创建 Tooltip
+  let currentTooltipNode = null;
+  document.addEventListener("mousemove", function (e) {
+    const target = e.target.closest("span[hasDescription]");
+    if (target && target !== currentTooltipNode) {
+      currentTooltipNode = target;
+      const description = target.getAttribute("data-description")
+        ? target.getAttribute("data-description")
+        : i18n.th(target.getAttribute("data-description-at"));
+      Animations.createTooltip(description, e, true);
+    } else if (!target) {
+      currentTooltipNode = null;
+      // Animations.clearAllTooltips && Animations.clearAllTooltips();
     }
   });
 

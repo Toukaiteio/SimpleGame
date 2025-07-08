@@ -39,47 +39,46 @@ class ExampleScene extends SubScene {
    * @returns {InGameEvent}
    */
   createSceneChoiceEvent() {
-    const choices = {
-      example_scene_choice_1_text: async () => {
-        // const feedbackText = document.createElement("p");
-        // feedbackText.innerHTML = i18n.t("example_scene_choice_1_feedback");
-        // getStoryTellerElement().appendChild(feedbackText);
-        new Battle(getPlayerInstance(), new Slime());
+    const choices = [
+      {
+        text: i18n.t("example_scene_choice_1_text"),
+        description: i18n.t("example_scene_choice_1_desc"),
+        conditions: [
+          { type: "attr", attr: "strength", value: 5 },
+          { type: "attr", attr: "hp", value: 30 },
+        ],
+        onSelect: async () => {
+          new Battle(getPlayerInstance(), new Slime());
+        },
       },
-      example_scene_choice_2_text: async () => {
-        const feedbackText = document.createElement("p");
-        getStoryTellerElement().appendChild(feedbackText);
-        Animations.writeWithHTML(
-          feedbackText,
-          i18n.t("example_scene_choice_2_feedback")
-        );
+      {
+        text: i18n.t("example_scene_choice_2_text"),
+        description: i18n.t("example_scene_choice_2_desc"),
+        conditions: [],
+        onSelect: async () => {
+          const feedbackText = document.createElement("p");
+          getStoryTellerElement().appendChild(feedbackText);
+          Animations.writeWithHTML(
+            feedbackText,
+            i18n.t("example_scene_choice_2_feedback")
+          );
+        },
       },
-    };
-
-    const writer = (key) => {
-      switch (key) {
-        case "name":
-          return i18n.t("example_scene_event_name");
-        case "content":
-          return i18n.t("example_scene_event_content");
-        default:
-          return i18n.t(key);
-      }
-    };
-
-    const event = new InGameEvent(
-      "ExampleSceneChoice",
+    ];
+    return new InGameEvent({
+      id: "ExampleSceneChoice",
       choices,
-      writer
-    );
-
-    // 设置事件属性
-    event
-      .setAllowInsertion(true)  // 允许其他事件插入
-      .setPriority(EventPriority.NORMAL)  // 设置正常优先级
-      .setTimeout(180000);  // 设置3分钟超时
-
-    return event;
+      writer: (key) => {
+        switch (key) {
+          case "name":
+            return i18n.t("example_scene_event_name");
+          case "content":
+            return i18n.t("example_scene_event_content");
+          default:
+            return i18n.t(key);
+        }
+      },
+    });
   }
 
   /**
@@ -133,18 +132,18 @@ class ExampleScene extends SubScene {
     });
 
     // 添加事件超时处理
-    choiceEvent.addHook("before", async () => {
-      const timeoutWarning = document.createElement("p");
-      timeoutWarning.className = "timeout-warning";
-      timeoutWarning.style.display = "none";
-      timeoutWarning.innerHTML = i18n.t("example_scene_timeout_warning");
-      getStoryTellerElement().appendChild(timeoutWarning);
+    // choiceEvent.addHook("before", async () => {
+    //   const timeoutWarning = document.createElement("p");
+    //   timeoutWarning.className = "timeout-warning";
+    //   timeoutWarning.style.display = "none";
+    //   timeoutWarning.innerHTML = i18n.t("example_scene_timeout_warning");
+    //   getStoryTellerElement().appendChild(timeoutWarning);
 
-      // 在即将超时时显示警告
-      setTimeout(() => {
-        timeoutWarning.style.display = "block";
-      }, 150000); // 2分30秒后显示警告
-    });
+    //   // 在即将超时时显示警告
+    //   setTimeout(() => {
+    //     timeoutWarning.style.display = "block";
+    //   }, 150000); // 2分30秒后显示警告
+    // });
 
     // 创建事件
     game.createEvent(choiceEvent);

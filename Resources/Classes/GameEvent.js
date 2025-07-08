@@ -35,15 +35,16 @@ export class GameEvent {
     type,
     data = {},
     callbacks = {},
-    timings = ["before", "during", "after", "final"]
+    timings = ["before", "during", "after", "final"],
+    timeout = 30000
   ) {
     this.type = type;
     this.data = data;
     this.state = EventState.CREATED;
     this.priority = EventPriority.NORMAL;
     this.allowInsertion = true;
-    this.timeout = 30000; // 默认30秒超时
-
+    this.timeout = timeout; // 默认30秒超时
+    this.isWaitForever = false;
     // 事件关系
     this.parentEvent = null;
     this.childEvents = [];
@@ -81,10 +82,18 @@ export class GameEvent {
    * @param {number} ms - 毫秒数
    */
   setTimeout(ms) {
+    this.isWaitForever = false;
     this.timeout = ms;
     return this;
   }
-
+  /**
+   * 设置是否等待永远
+   * @param {boolean} waitForever - 是否等待永远
+   */
+  setWaitForever(waitForever) {
+    this.isWaitForever = waitForever;
+    return this;
+  }
   /**
    * 设置钩子函数
    * @private
@@ -140,7 +149,7 @@ export class GameEvent {
 
         // 设置超时处理
         this.timeoutTimer = setTimeout(() => {
-          if (this.state === EventState.RUNNING) {
+          if (this.state === EventState.RUNNING && !this.isWaitForever) {
             this.cancel();
             reject(
               new Error(`Event ${this.type} timed out after ${this.timeout}ms`)
@@ -153,14 +162,7 @@ export class GameEvent {
         await this.executeHooks("during", game);
         await this.executeHooks("after", game);
 
-        // 处理延迟执行的事件
-        if (this.deferredEvents.length > 0) {
-          // 按优先级排序延迟事件
-          this.deferredEvents.sort((a, b) => b.priority - a.priority);
-          for (const event of this.deferredEvents) {
-            await game.insertEvent(event);
-          }
-        }
+        // deferredEvents will now be handled by the Game class after the event is fully completed.
 
         clearTimeout(this.timeoutTimer);
         this.complete();

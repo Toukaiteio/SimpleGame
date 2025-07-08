@@ -27,24 +27,18 @@ export class ItemManager {
         "itemUse",
         { item, target },
         {
-          before: async (self) => {
-            // 触发使用前事件
-            await this.game.triggerEvent("beforeItemUse", { item, target });
-          },
           during: async (self) => {
             // 扣除使用次数
-            item.costUseTime(1);
-            
+            await item.costUseTime(1);
+
             // 应用物品效果
             if (item.onUse) {
               await item.onUse(item.item_status, target);
             }
           },
-          after: async (self) => {
-            // 触发使用后事件
-            await this.game.triggerEvent("afterItemUse", { item, target });
-          }
-        }
+        },
+        undefined,
+        undefined
       )
     );
   }
@@ -61,16 +55,13 @@ export class ItemManager {
     }
 
     const slot = item.equip_slot;
-    
+
     return this.game.createEvent(
       this.game.eventWrapper(
         "itemEquip",
         { item, target, slot },
         {
           before: async (self) => {
-            // 触发装备前事件
-            await this.game.triggerEvent("beforeItemEquip", { item, target, slot });
-            
             // 如果槽位已有装备，先卸下
             if (target.equipment[slot]) {
               await this.unequipItem(target.equipment[slot], target);
@@ -78,13 +69,13 @@ export class ItemManager {
           },
           during: async (self) => {
             // 扣除使用次数
-            item.costUseTime(1);
-            
+            await item.costUseTime(1);
+
             // 更新装备状态
             target.equipment[slot] = item;
             target.equipmentBonus[slot] = {
               equipped: true,
-              ...item.item_status
+              ...item.item_status,
             };
 
             // 应用装备效果
@@ -92,11 +83,9 @@ export class ItemManager {
               await item.onEquip(target);
             }
           },
-          after: async (self) => {
-            // 触发装备后事件
-            await this.game.triggerEvent("afterItemEquip", { item, target, slot });
-          }
-        }
+        },
+        undefined,
+        undefined
       )
     );
   }
@@ -119,18 +108,14 @@ export class ItemManager {
         "itemUnequip",
         { item, target, slot },
         {
-          before: async (self) => {
-            // 触发卸下前事件
-            await this.game.triggerEvent("beforeItemUnequip", { item, target, slot });
-          },
           during: async (self) => {
             // 恢复使用次数
-            item.addUseTime(1);
-            
+            await item.addUseTime(1);
+
             // 清除装备状态
             target.equipment[slot] = null;
             target.equipmentBonus[slot] = {
-              equipped: false
+              equipped: false,
             };
 
             // 移除装备效果
@@ -138,11 +123,9 @@ export class ItemManager {
               await item.onUnequip(target);
             }
           },
-          after: async (self) => {
-            // 触发卸下后事件
-            await this.game.triggerEvent("afterItemUnequip", { item, target, slot });
-          }
-        }
+        },
+        undefined,
+        undefined
       )
     );
   }
@@ -160,13 +143,9 @@ export class ItemManager {
         "itemAdd",
         { item, target, amount },
         {
-          before: async (self) => {
-            // 触发添加前事件
-            await this.game.triggerEvent("beforeItemAdd", { item, target, amount });
-          },
           during: async (self) => {
             const itemId = item.item_id;
-            
+
             // 初始化物品栏位
             if (!target.inventory[itemId]) {
               target.inventory[itemId] = [];
@@ -176,11 +155,9 @@ export class ItemManager {
             item.addUseTime(amount);
             target.inventory[itemId].push(item);
           },
-          after: async (self) => {
-            // 触发添加后事件
-            await this.game.triggerEvent("afterItemAdd", { item, target, amount });
-          }
-        }
+        },
+        undefined,
+        undefined
       )
     );
   }
@@ -198,33 +175,49 @@ export class ItemManager {
         "itemRemove",
         { item, target, amount },
         {
-          before: async (self) => {
-            // 触发移除前事件
-            await this.game.triggerEvent("beforeItemRemove", { item, target, amount });
-          },
           during: async (self) => {
             const itemId = item.item_id;
-            
+
             if (target.inventory[itemId]) {
               // 扣除使用次数
-              item.costUseTime(amount);
-              
+              await item.costUseTime(amount);
+
               // 如果物品用完，从背包移除
               if (item.use_time <= 0) {
-                target.inventory[itemId] = target.inventory[itemId].filter(i => i !== item);
+                target.inventory[itemId] = target.inventory[itemId].filter(
+                  (i) => i !== item
+                );
                 if (target.inventory[itemId].length === 0) {
                   delete target.inventory[itemId];
                 }
               }
             }
           },
-          after: async (self) => {
-            // 触发移除后事件
-            await this.game.triggerEvent("afterItemRemove", { item, target, amount });
-          }
-        }
+        },
+        undefined,
+        undefined
       )
     );
+  }
+
+  /**
+   * 按ID从背包移除物品
+   * @param {Player} target 目标玩家
+   * @param {string} itemId 物品ID
+   * @param {number} amount 数量
+   * @returns {Promise}
+   */
+  async removeItemById(target, itemId, amount) {
+    let amountToRemove = amount;
+    const items = target.inventory[itemId] || [];
+
+    for (const item of items) {
+      if (amountToRemove <= 0) break;
+
+      const amountFromThisStack = Math.min(item.use_time, amountToRemove);
+      await this.removeItem(item, target, amountFromThisStack);
+      amountToRemove -= amountFromThisStack;
+    }
   }
 
   /**

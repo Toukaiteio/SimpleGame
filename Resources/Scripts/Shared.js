@@ -163,3 +163,5 @@ export function addToItemList(item_id, item_data) {
 export function getItemList() {
   return item_list;
 }
+
+export const BEGIN_SCENE = "ExampleScene";
