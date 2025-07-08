@@ -134,27 +134,6 @@ export function getUIInstance() {
   }
 }
 
-/**
- * 设置共享的 Map 实例
- * @param {Map} map
- * @param {SVGAElement} mapElement
- */
-export function setMapInstance(map, mapElement) {
-  container.register("Map", () => ({ map, mapElement }), "value");
-}
-
-/**
- * 获取共享的 Map 实例
- * @returns {{map: Map, mapElement: SVGAElement}|null}
- */
-export function getMapInstance() {
-  try {
-    return container.resolve("Map")();
-  } catch (e) {
-    return null;
-  }
-}
-
 let _getRandom = null;
 export function setRandom(random) {
   _getRandom = random;
@@ -184,3 +163,5 @@ export function addToItemList(item_id, item_data) {
 export function getItemList() {
   return item_list;
 }
+
+export const BEGIN_SCENE = "ExampleScene";

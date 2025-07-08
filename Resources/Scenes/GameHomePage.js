@@ -1,22 +1,22 @@
-import { Animations, FastComponent, Scene } from "../Classes/UI.js";
-import { log } from "../Classes/Game.js";
+import { Animations } from "../Classes/Animations.js";
+import { Scene } from "../Classes/Scene.js";
+import { FastComponent } from "../Classes/FastComponent.js";
+import { log } from "../Classes/Utils.js";
 import {
   getUIInstance,
   getGameInstance,
-  getMapInstance,
   getPlayerInstance,
-  setRandom,
+  BEGIN_SCENE
 } from "../Scripts/Shared.js";
 import { i18n } from "../Classes/I18n.js";
-import { General_Skills } from "../Scripts/Skills/General.js";
-import { SeededRandom } from "../Classes/Random.js";
-import { Save, SaveController } from "../Classes/Save.js";
-import { audioManager } from "../Classes/Audio.js";
+import { Save } from "../Classes/Save.js";
+import { SaveController } from "../Classes/SaveController.js";
+
 const ui = getUIInstance();
 const game = getGameInstance();
 /**
  * 游戏主页场景类
- * 显示“开始游戏”、“读取存档”、“设置”三个选项。
+ * 显示"开始游戏"、"读取存档"、"设置"三个选项。
  */
 class GameHomePage extends Scene {
   /**
@@ -25,7 +25,7 @@ class GameHomePage extends Scene {
    */
   constructor() {
     super("GameHomePage"); // 调用父类的构造函数，设置场景ID
-    // 创建“开始游戏”按钮
+    // 创建"开始游戏"按钮
     this.addComponent(
       "GameMode",
       FastComponent.RadioGroup(i18n.t("option_game_mode_select"), [
@@ -40,9 +40,11 @@ class GameHomePage extends Scene {
           onSelect: (self) => {
             game.setGameSetting("mode", null);
           },
+          disabled: true,
         },
       ])
     );
+    // 创建性别选择组件
     this.addComponent(
       "SelectGender",
       FastComponent.RadioGroup(i18n.t("option_gender_select"), [
@@ -51,19 +53,17 @@ class GameHomePage extends Scene {
           onSelect: (self) => {
             game.setGameSetting("gender", 1);
           },
+          // 设置默认值
+          default: game.getGameSetting("gender") === 1 || game.getGameSetting("gender") === -1
         },
         {
           content: i18n.t("option_gender_select_female"),
           onSelect: (self) => {
             game.setGameSetting("gender", 0);
           },
-        },
-        {
-          content: i18n.t("option_gender_select_futanari"),
-          onSelect: (self) => {
-            game.setGameSetting("gender", -1);
-          },
-        },
+          // 设置默认值
+          default: game.getGameSetting("gender") === 0
+        }
       ])
     );
     this.addComponent(
@@ -85,10 +85,17 @@ class GameHomePage extends Scene {
         null,
         null,
         i18n.t("option_general_setting_name_characterName"),
-        i18n.t("option_general_setting_name_characterName"),
+        i18n.t("option_general_setting_name_characterName_placeHolder"),
         "",
         (text) => {
-          game.setGameSetting("characterName", text);
+          const validation = this.validatePlayerName(text);
+          if (validation.isValid) {
+            game.setGameSetting("characterName", text);
+          } else {
+            Animations.displayMessage("warning", validation.message);
+            // Optionally, clear the invalid input or handle it in the UI
+            game.setGameSetting("characterName", ""); // Clear the setting if invalid
+          }
         }
       )
     );
@@ -110,14 +117,18 @@ class GameHomePage extends Scene {
       }
       // audioManager.playBGM("Game Over Zyanaimon");
     });
-    // 创建“读取存档”按钮
+    this.createButton("saveManager", () => {
+      const ui = getUIInstance();
+      ui.displayScene("GameSaveList");
+    });
+    // 创建"读取存档"按钮
     // if (Object.keys(this.saves).length > 0) {
     //   this.createButton("loadGame", () => {
     //     this.loadGame();
     //   });
     // }
 
-    // 创建“设置”按钮
+    // 创建"设置"按钮
     // this.createButton("settings", () => {
     //   this.showSettings();
     // });
@@ -154,7 +165,7 @@ class GameHomePage extends Scene {
     getPlayerInstance()
       .getSelfJson(true)
       .addHook("after", (self) => {
-        const tempSave = new Save(self.data.result, "KingdomPalace");
+        const tempSave = new Save(self.data.result, BEGIN_SCENE,[],game.getGameSetting("saveName"));
         tempSave.load();
       });
     // tempSave.load();
@@ -170,6 +181,27 @@ class GameHomePage extends Scene {
     // 例如，展示存档选择界面
     // ui.displayScene("GameSaveList");
     this.saves[i18n.t("default_save")].load();
+  }
+
+  validatePlayerName(name) {
+    if (!name) {
+      return { isValid: true }; // Allow empty name
+    }
+
+    if (name.length > 15) {
+      return { isValid: false, message: i18n.t("error_name_too_long") };
+    }
+
+    if (!/^[a-zA-Z0-9\s]+$/.test(name)) {
+      return { isValid: false, message: i18n.t("error_name_invalid_chars") };
+    }
+
+    const parts = name.split(' ');
+    if (parts.length !== 2 || parts.includes('')) {
+        return { isValid: false, message: i18n.t("error_name_format") };
+    }
+
+    return { isValid: true };
   }
 
   /**

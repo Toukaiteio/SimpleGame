@@ -1,0 +1,88 @@
+.battle-log-container {
+  padding: 1rem;
+  border: 1px solid var(--card-border-color);
+  background-color: var(--card-bg-color);
+  border-radius: 15px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  display: flex;
+  max-height: 450px;
+  overflow-y: scroll;
+  flex-direction: column;
+}
+
+.battle-log-container h4 {
+  color: var(--primary-title-color);
+  margin-bottom: 0.5rem;
+}
+
+.battle-log-container .log-entries {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-right: 5px; /* For scrollbar */
+}
+
+.battle-log-container .log-entries div {
+  margin-bottom: 0.25rem;
+  line-height: 1.3;
+}
+
+.battle-log-container .log-entries div:last-child {
+  margin-bottom: 0;
+}
+
+.item-status-indicator {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  margin-top: 5px;
+  gap: 2px;
+}
+
+.stat-indicator {
+  color: var(--primary-desc-color); /* Example color */
+}
+
+.equipment-stats {
+  margin-top: 5px;
+  font-size: 0.8rem;
+}
+
+.stat-bonus {
+  color: var(--primary-desc-color); /* Example color */
+}
+
+.item-card.equipable {
+  border: 1px solid var(--highlight-bg-color); /* Example style */
+}
+
+.item-card.usable {
+  /* Add specific styles if needed */
+}
+
+.item-card.enhanceable {
+  /* Add specific styles if needed */
+}
+
+.equipment-slot.equipped {
+  border: 1px solid var(--highlight-bg-color); /* Example style */
+}
+
+.battle-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+.floating-text {
+  position: absolute;
+  color: #ffffff; /* Default, can be overridden inline */
+  font-size: 16px;
+  font-weight: bold;
+  transform: translateX(-50%) translateY(-50%);
+  opacity: 1;
+  pointer-events: none;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+  user-select: none;
+  z-index: 9999;
+} 

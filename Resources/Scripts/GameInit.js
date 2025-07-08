@@ -1,16 +1,17 @@
-import { Game, log } from "../Classes/Game.js";
-import { Animations, UI } from "../Classes/UI.js";
+import { Game } from "../Classes/Game.js";
+import { log } from "../Classes/Utils.js";
+import { Animations } from "../Classes/Animations.js";
+import { UI } from "../Classes/UI.js";
 import { Player } from "../Classes/Player.js";
 import { loadScenes } from "./ScenesLoader.js";
-import {
-  setGameInstance,
-  setUIInstance,
-  setMapInstance,
-  setPlayerInstance,
-} from "./Shared.js";
-import { Map, generateMapData } from "../Classes/Map.js";
+import { setGameInstance, setUIInstance, setPlayerInstance } from "./Shared.js";
 import { subSceneList } from "../Scenes/GameStoryTeller.js";
 import { i18n } from "../Classes/I18n.js";
+import { getItemData } from "./Items/Index.js";
+import { itemManager } from "../Classes/ItemManager.js";
+
+gsap.registerPlugin(Draggable, DrawSVGPlugin, MotionPathPlugin, MorphSVGPlugin, Physics2DPlugin, ScrambleTextPlugin, SplitText, TextPlugin);
+
 // 获取游戏容器的DOM元素
 const gameContainer = document.getElementById("GameView");
 
@@ -33,26 +34,24 @@ i18n.loadLanguage("cn").then(() => {
   };
   log("Class of 'Game' and 'UI' initialized.");
 
-  game.addGlobalTrigger("renderScene", "after", async (self, game) => {
-    if (self.data.container) {
-      Animations.clearAllTooltips();
-      const nodeList = [
-        ...self.data.container.querySelectorAll("span[hasDescription]"),
-      ];
-      if (nodeList.length > 0) {
-        for (const node of nodeList) {
-          if (!node.hasTooltip) {
-            const title = node.textContent;
-            const description = node.getAttribute("data-description")
-              ? node.getAttribute("data-description")
-              : i18n.th(node.getAttribute("data-description-at"));
-            Animations.attachHoverDescription(node, title, description);
-          }
-        }
-      }
+  // 监听全局 mousemove 事件，鼠标进入目标元素时统一创建 Tooltip
+  let currentTooltipNode = null;
+  document.addEventListener("mousemove", function (e) {
+    const target = e.target.closest("span[hasDescription]");
+    if (target && target !== currentTooltipNode) {
+      currentTooltipNode = target;
+      const description = target.getAttribute("data-description")
+        ? target.getAttribute("data-description")
+        : i18n.th(target.getAttribute("data-description-at"));
+      Animations.createTooltip(description, e, true);
+    } else if (!target) {
+      currentTooltipNode = null;
+      // Animations.clearAllTooltips && Animations.clearAllTooltips();
     }
   });
 
+  game.getItemData = getItemData;
+  itemManager.game = game;
   // 加载所有场景
   loadScenes().then((scenes) => {
     // 将场景存储在UI中

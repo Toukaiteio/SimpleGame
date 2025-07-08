@@ -1,4 +1,4 @@
-import { InGameEvent } from "../Classes/Game.js";
+import { InGameEvent } from "../Classes/InGameEvent.js";
 import { i18n } from "../Classes/I18n.js";
 import { Player } from "../Classes/Player.js";
 import {
@@ -6,7 +6,7 @@ import {
   getPlayerInstance,
   getGameInstance,
 } from "./Shared.js";
-import { Animations } from "../Classes/UI.js";
+import { Animations } from "../Classes/Animations.js";
 import { SeededRandom } from "../Classes/Random.js";
 import { Battle } from "../Classes/Battle.js";
 const writeH = Animations.writeWithHTML;
@@ -18,7 +18,7 @@ export class InGameEvents {
     }
     return InGameEvents.instance;
   }
-  static allowEnteringSubscene = ["BerryForest", "BareGround", "MiddleTown"];
+  static allowEnteringSubscene = [];
   static randomChoose(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
   }
@@ -48,7 +48,7 @@ export class InGameEvents {
               "has_leaved_palace",
               true
             );
-            player.moveTo("#BerryForest");
+            player.moveTo("#ExampleScene");
 
           },
         },
@@ -80,7 +80,7 @@ export class InGameEvents {
             /** @type {Player} */
             const player = getPlayerInstance();
             player
-              .moveTo("#KingdomPalace")
+              .moveTo("#DefaultFallbackLocation")
               .addHook("after", async (self, game) => {
                 getPlayerInstance().addFlag("back_palace_at_just_begin", true);
               });
@@ -153,7 +153,7 @@ export class InGameEvents {
             /** @type {Player} */
             i18n.m("info_hero", i18n.t("info_hero_loser"));
             const player = getPlayerInstance();
-            player.moveTo("#BerryForest");
+            player.moveTo("#DefaultFallbackLocation");
           },
         },
         (key) => {

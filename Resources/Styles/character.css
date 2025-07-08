@@ -1,0 +1,52 @@
+.character-card {
+  padding: 1rem;
+  border: 1px solid var(--card-border-color);
+  background-color: var(--card-bg-color);
+  border-radius: 15px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.character-card h3 {
+  color: var(--primary-title-color);
+  margin-bottom: 0.5rem;
+}
+
+.character-card .buffs {
+  margin-top: 0.5rem;
+}
+
+.character-card .buffs h4 {
+  color: var(--primary-desc-color);
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.progress-bar-wrapper {
+  width: 100%;
+}
+
+.progress-bar-label {
+  font-size: 0.9rem;
+  color: var(--primary-label-color);
+  margin-bottom: 0.25rem;
+}
+
+.progress-bar-container {
+  background: rgba(0, 0, 0, 0.8);
+  border-radius: 5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease-in-out, background 0.3s ease-in-out;
+  border-radius: 5px;
+}
+
+.progress-bar-text {
+  color: #fff;
+  position: absolute;
+  top: 50%;
+  white-space: nowrap;
+} 

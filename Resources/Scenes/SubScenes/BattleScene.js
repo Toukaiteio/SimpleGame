@@ -1,5 +1,5 @@
-import { SubScene } from "../../Classes/UI.js";
-import { log } from "../../Classes/Game.js";
+import { SubScene } from "../../Classes/SubScene.js";
+import { log } from "../../Classes/Utils.js";
 import { i18n } from "../../Classes/I18n.js";
 import {
   getGameInstance,
@@ -7,22 +7,23 @@ import {
   getUIInstance,
 } from "../../Scripts/Shared.js";
 import { Buff_List } from "../../Scripts/Buffs/General.js";
+import { FastComponent } from "../../Classes/FastComponent.js";
+import { Animations } from "../../Classes/Animations.js";
+import { html, render } from "../../ThirdParty/lit-html.js";
 class BattleScene extends SubScene {
   constructor() {
     super("BattleScene");
     this.isAllowSave = false;
     this.textContent = i18n.t(this.id);
-    // 勾住 onBattleBegin 的 after时机，将游戏场景跳转至自身;
+    this.battleLogContainer = FastComponent.BattleLogContainer();
     const game = getGameInstance();
-    // 在Batlle场景被创建时会自动注册，不需要考虑被注册问题。
     game.addGlobalTrigger("onBattleBegin", "after", async (self, game) => {
       const next = self.data.player.moveTo("#BattleScene");
-      // add next round button to defaultIntereactives here;
       this.hasRoadTo = [];
-      this.battleLogs = [];
-      this.isRenderMap = false;
       this.isBattleEnd = false;
       this.noSafeText = true;
+      this.playerCardShattered = false;
+      this.monsterCardShattered = false;
       this.defaultIntereactives = [document.createElement("br")];
       this.defaultIntereactives.push(
         this.createButton("nextround", i18n.t("battle_func_next_round"), () => {
@@ -31,136 +32,120 @@ class BattleScene extends SubScene {
       );
       next.data["battleData"] = {
         player: self.data.player,
-        monster: self.data.monster,
+        monsters: self.data.monsters,
         battle: self.data.battle,
       };
+      self.data.battle.onEndBattle(() => {
+        this.isBattleEnd = true;
+        this.interactiveElements = [];
+        const leaveBtn = this.createButton("leavebattle", i18n.t("battle_func_leave"), () => {
+          self.data.battle.endBattle();
+          this.clearBattleLog();
+        });
+        this.addInteractiveElement(leaveBtn);
+        this.parentScene.render(getUIInstance().gameContainer);
+      });
       next.addHook("after", async (self, game) => {
         self.data.to.battleData = self.data.battleData;
-        const skillButtons = [];
-        for (const i of self.data.battleData.player.skills) {
-          skillButtons.push(
-            this.createButton(
-              `${i.id}_skillbutton`,
-              i.skillName,
-              () => {
-                const next = self.data.battleData.battle.onUseSkill(
-                  self.data.battleData.player,
-                  self.data.battleData.monster,
-                  i.id
-                );
-              },
-              (i.isAutoTrigger ? i18n.t("skill_AutoTrigger_flag") : "") +
-                i.skillDesc
-            )
-          );
-        }
-        this.interactiveElements = [];
-        this.addInteractiveElement(
-          ...skillButtons.concat(this.defaultIntereactives)
-        );
+        this.updateSelf();
         this.parentScene.render(getUIInstance().gameContainer);
       });
     });
   }
-  createButton(name, content, callback, title = "", isForbid = false) {
+  createButton(
+    name,
+    content,
+    callback,
+    isForbid = false,
+    extraClass = ""
+  ) {
     const t = document.createElement("button");
     t.id = name;
     t.innerHTML = content;
-    if (title) t.title = title;
     t.onclick = callback;
     if (isForbid) t.disabled = true;
+    if (extraClass) t.classList.add(extraClass);
     return t;
+  }
+  addBattleLog(logEntry) {
+    this.battleLogContainer.addLog(logEntry);
+  }
+  clearBattleLog() {
+    this.battleLogContainer.clearLog();
   }
   updateSelf() {
     if (this.battleData && this.battleData.battle) {
-      const fmt = {
-        MonsterName: this.battleData.monster.name,
-        PlayerHealthPoints: this.battleData.player.hp,
-        PlayerMaxHealthPoints: this.battleData.player.status.maxHp,
-        MonsterHealthPoints: this.battleData.monster.hp,
-        MonsterMaxHealthPoints: this.battleData.monster.status.maxHp,
-        RoundCount: this.battleData.battle.turn,
-      };
-      this.textContent = i18n.f(this.id + "_Data", fmt) + "<br/>";
-      if (this.battleData.player.status.buffList.length > 0) {
-        for (const i of this.battleData.player.status.buffList) {
-          const fmt_Buff = {
-            MonsterName: this.battleData.player.playerName
-              ? this.battleData.player.playerName["lastName"] +
-                " " +
-                this.battleData.player.playerName["firstName"]
-              : i18n.t("battle_player_default"),
-            BuffReason: i.reason,
-            BuffType:Buff_List[i.buff].effect_type,
-            BuffInfo:
-              (Buff_List[i.buff].no_round_limited_symbol
-                ? i18n.t("battle_buff_Effect_prefix2")
-                : i18n.f("battle_buff_Effect_prefix", {
-                    RemainRound: i.remainRound,
-                  })) + i18n.t(Buff_List[i.buff].effect_desc),
-            BuffName: i18n.t(Buff_List[i.buff].name),
-          };
-          this.textContent += i18n.f("battle_buff_reason", fmt_Buff) + "<br/>";
+      const player = this.battleData.player;
+      const battle = this.battleData.battle;
+      const enemies = battle.getAliveEnemies();
+      const playerCard = FastComponent.CharacterCard(player);
+      const monsterCards = enemies.map((m, idx) =>
+       html `<div id="monster-card-container-${idx}" style="flex: 1 1 300px;">${FastComponent.CharacterCard(m)}</div>`
+      );
+      const template = html`
+        <div class="battle-layout">
+        <div class="combatants-container" style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
+            <div id="player-card-container" style="flex: 1 1 300px;">${playerCard}</div>
+            ${monsterCards.map(card => card)}
+        </div>
+        <div class="battle-log-area battle-log-panel">
+            ${this.battleLogContainer}
+        </div>
+        <div class="battle-tips-area">
+            ${!getPlayerInstance().getFlag("FirstFight")
+            ? i18n.t("battle_tips_skill_hover") ||
+              "Tips: Hover over skills to see their effects!"
+            : ""}
+        </div>
+        </div>
+      `;
+      const container = document.createElement('div');
+      render(template, container);
+      this.textContent = container.innerHTML;
+      setTimeout(() => {
+        if (player.status.hp <= 0 && !this.playerCardShattered) {
+          const playerCardElement = document.getElementById("player-card-container");
+          if(playerCardElement) Animations.breakElement(playerCardElement);
+          this.playerCardShattered = true;
         }
-      }
-      if (this.battleData.monster.status.buffList.length > 0) {
-        for (const i of this.battleData.monster.status.buffList) {
-          const fmt_Buff = {
-            MonsterName: this.battleData.monster.name,
-            BuffReason: i.reason,
-            BuffType:Buff_List[i.buff].effect_type,
-            BuffInfo:
-              (Buff_List[i.buff].no_round_limited_symbol
-                ? i18n.t("battle_buff_Effect_prefix2")
-                : i18n.f("battle_buff_Effect_prefix", {
-                    RemainRound: i.remainRound,
-                  })) + i18n.t(Buff_List[i.buff].effect_desc),
-            BuffName: i18n.t(Buff_List[i.buff].name),
-          };
-          this.textContent += i18n.f("battle_buff_reason", fmt_Buff) + "<br/>";
-        }
-      }
-      this.textContent += this.battleLogs.join("<br/>");
-      if (!getPlayerInstance().getFlag("FirstFight"))
-        this.textContent += "\nTips:将鼠标悬放在技能上可以查看技能效果！";
-      if (!this.battleData.battle.isBattleEnd) {
-        const skillButtons = [];
-        for (const i of this.battleData.player.skills) {
-          if (i.isCoolingDown) {
-            skillButtons.push(
-              this.createButton(
-                `${i.id}_skillbutton`,
-                i.skillName +
-                  i18n.f("info_skill_cooling_remain", {
-                    CoolingDownRoundsRemain: i.skillCD - i.CDCounter,
-                  }),
-                () => {
-                  return;
-                },
-                (i.isAutoTrigger ? i18n.t("skill_AutoTrigger_flag") : "") +
-                  i.skillDesc,
-                true
-              )
-            );
-          } else {
-            skillButtons.push(
-              this.createButton(
-                `${i.id}_skillbutton`,
-                i.skillName,
-                () => {
-                  const next = this.battleData.battle.onUseSkill(
-                    this.battleData.player,
-                    this.battleData.monster,
-                    i.id
-                  );
-                },
-                (i.isAutoTrigger ? i18n.t("skill_AutoTrigger_flag") : "") +
-                  i.skillDesc
-              )
-            );
+        enemies.forEach((m, idx) => {
+          if (m.status.hp <= 0 && !this[`monsterCardShattered${idx}`]) {
+            const monsterCardElement = document.getElementById(`monster-card-container-${idx}`);
+            if(monsterCardElement) Animations.breakElement(monsterCardElement);
+            this[`monsterCardShattered${idx}`] = true;
           }
-        }
+        });
+      }, 0);
+      if (!battle.isBattleEnd) {
         this.interactiveElements = [];
+        const skillButtons = [];
+        for (const skill of player.skills) {
+          let buttonText = skill.skillName;
+          let isCooling = skill.isCoolingDown;
+          let extraClass = "";
+          if (isCooling) {
+            buttonText += ` (${
+              i18n.f("info_skill_cooling_remain", {
+                CoolingDownRoundsRemain: skill.skillCD - skill.CDCounter,
+              }) || skill.skillCD - skill.CDCounter + "r"
+            })`;
+            extraClass = "cooling-down";
+          }
+          skillButtons.push(
+            this.createButton(
+              `${skill.id}_skillbutton`,
+              buttonText,
+              () => {
+                if (!isCooling) {
+                  const target = enemies[0];
+                  if (target) battle.onUseSkill(player, target, skill.id);
+                }
+              },
+              isCooling,
+              extraClass
+            )
+          );
+        }
         this.addInteractiveElement(
           ...skillButtons.concat(this.defaultIntereactives)
         );

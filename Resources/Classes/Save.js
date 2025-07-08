@@ -1,108 +1,66 @@
 // 1、玩家状态与位置
 // 2、物品状态
-import {
-  getPlayerInstance,
-  getGameInstance,
-  getUIInstance,
-  setRandom,
-} from "../Scripts/Shared.js";
+import { getGameInstance, getPlayerInstance } from "../Scripts/Shared.js";
 import { i18n } from "./I18n.js";
-import { General_Skills } from "../Scripts/Skills/General.js";
-import { SeededRandom } from "./Random.js";
-import { log } from "./Game.js";
+// import { General_Skills } from "../Scripts/Skills/General.js"; // Not directly used by Save class
+// import { SeededRandom } from "./Random.js"; // Not directly used by Save class
+// import { log } from "./Utils.js"; // Assuming log might be used for debugging, but not in current Save structure
+import { SaveController } from "./SaveController.js";
+
 export class Save {
   static HasSaveRunning = false;
-  constructor(player, location,hookList = [], saveName = null) {
-    this.player = player;
-    this.location = location;
-    this.hookList = hookList;
-    this.gameSettings = getGameInstance().gameSettings;
-    this.saveName = i18n.t("default_save")
+  constructor(player, location, hookList = [], saveName = null, meta = {}) {
+    this.player = player; // JSON string of player data
+    this.location = location; // string, subscene id
+    this.hookList = hookList; // array of hook identifiers
+    this.gameSettings = getGameInstance().gameSettings; // object
+    this.saveName = saveName || i18n.t("default_save"); // Use provided saveName or default
+    // 新增meta信息
+    this.meta = Object.assign(
+      {
+        time: Date.now(),
+        characterName: this.gameSettings?.characterName || "",
+        mode: this.gameSettings?.mode || "",
+        gender: this.gameSettings?.gender,
+      },
+      meta
+    );
   }
-  save() {
-    const oSaveSlots = SaveController.getSaveSlots();
-    oSaveSlots[this.saveName] = {
+
+  save(slot = 1) {
+    const oSaveSlots = SaveController.getSaveSlotsRaw();
+    // 存档槽最大6个
+    const slotKey = `slot${slot}`;
+    oSaveSlots[slotKey] = {
       player: this.player,
       location: this.location,
+      hookList: this.hookList,
       saveName: this.saveName,
       gameSettings: this.gameSettings,
+      meta: Object.assign({}, this.meta, {
+        time: Date.now(),
+        characterName: this.gameSettings?.characterName || "",
+        mode: this.gameSettings?.mode || "",
+        gender: this.gameSettings?.gender,
+      }),
     };
     localStorage.setItem("game-local-saves", JSON.stringify(oSaveSlots));
   }
+
   load() {
+    // Ensure that only one save process is running at a time.
     if (!Save.HasSaveRunning) {
       Save.HasSaveRunning = true;
+      getPlayerInstance().setPlayerName(this.meta.characterName);
+      getPlayerInstance().gender = this.meta.gender;
+      getPlayerInstance().gameDiffculty = this.meta.mode;
+      // Create a new SaveController instance with this Save object.
+      // This will trigger the game loading process within the SaveController constructor.
       SaveController.setInstance(new SaveController(this));
+      // log(`Save slot '${this.saveName}' is being loaded.`);
+    } else {
+      // log(`Attempted to load save '${this.saveName}' while another save operation is already in progress.`);
+      // Optionally, queue this load request or notify the user.
     }
-  }
-}
-export class SaveController {
-  static instance = null;
-  constructor(runningSave) {
-    this.runningSave = runningSave;
-    const game = getGameInstance();
-    const ui = getUIInstance();
-    const next = game
-      .eventWrapper(
-        "gameStart",
-        {
-          player_data: {},
-          player: getPlayerInstance(),
-        },
-        {
-          after: (self, game) => {
-            self.data.player
-            .applySelfJson(runningSave.player)
-            .addHook("after", () => {
-              getGameInstance().gameSettings = runningSave.gameSettings;
-              setRandom(new SeededRandom(SeededRandom.getRandom()));
-              
-              ui.displayScene("GameStoryTeller");
-                
-              ui.getScene("GameStoryTeller").switchToSubScene(
-                runningSave.location
-              );
-            })
-          },
-        }
-      )
-      game.createEvent(next);
-  }
-  static setInstance(instance) {
-    SaveController.instance = instance;
-  }
-  static async updateSave(){
-    await getPlayerInstance()
-      .getSelfJson()
-      .then((result) => {
-        SaveController.instance.runningSave.player = result;
-        const curLocation = getPlayerInstance().currentLocation;
-        if (curLocation != "#BattleScene")
-          SaveController.instance.runningSave.location = curLocation.startsWith(
-            "#"
-          )
-            ? curLocation.replace("#", "")
-            : curLocation;
-      });
-  }
-  static getInstance() {
-    if (!SaveController.instance) {
-      throw new Error("SaveController not initialized");
-    }
-    return SaveController.instance;
-  }
-  static getSaveSlots() {
-    const saves = JSON.parse(localStorage.getItem("game-local-saves")) || {};
-    const result = {};
-    if (saves instanceof Object) {
-      for (const i in saves) {
-        result[i] = new Save(
-          saves[i].player,
-          saves[i].location,
-          saves[i].saveName
-        );
-      }
-      return result;
-    } else return {};
   }
 }

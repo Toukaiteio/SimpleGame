@@ -1,0 +1,87 @@
+.dialog-content.enhance-dialog-content {
+    background: none;
+    border: none;
+    box-shadow: none;
+}
+
+.enhance-dialog-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.enhance-stats-card {
+    flex: 1;
+    background: var(--card-bg-color);
+    border: 1px solid var(--card-border-color);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.enhance-stats-card h4 {
+    color: var(--primary-title-color);
+    margin-bottom: 0.5rem;
+}
+
+.enhance-stats-card ul {
+    list-style: none;
+    padding: 0;
+}
+
+.enhance-stats-card li {
+    margin-bottom: 0.25rem;
+}
+
+.stats-current li {
+    color: var(--text-color);
+}
+
+.stats-next li {
+    color: #4caf50; /* Green for upgraded stats */
+}
+
+.arrow-icon {
+    font-size: 1.5rem;
+    color: var(--highlight-bg-color);
+    margin: 0 0.5rem;
+}
+
+.enhance-cost-card {
+    flex: 1;
+    background: var(--card-bg-color);
+    border: 1px solid var(--card-border-color);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.enhance-cost-card h4 {
+    color: var(--primary-title-color);
+    margin-bottom: 0.5rem;
+}
+
+.enhance-cost-card ul {
+    list-style: none;
+    padding: 0;
+}
+
+.enhance-cost-card li.sufficient {
+    color: #4caf50;
+}
+
+.enhance-cost-card li.insufficient {
+    color: #f44336;
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+} 

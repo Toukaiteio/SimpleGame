@@ -3,58 +3,158 @@ import {
   getPlayerInstance,
   getUIInstance,
 } from "../Shared.js";
-const player = getPlayerInstance();
+import { itemManager } from "../../Classes/ItemManager.js";
+import { Animations } from "../../Classes/Animations.js";
+/**
+ * 物品效果系统
+ * 提供与新物品管理系统兼容的物品效果处理
+ */
 export const ItemBuffs = {
-  GeneralOnEquip(self, target) {
-    const equip = self;
-    if(equip.use_time <= 0) return;
-    if (
-      !target.equipmentBonus[equip.equip_slot] ||
-      target.equipmentBonus[equip.equip_slot]["equipped"] === false
-    ) {
-      target.equipmentBonus[equip.equip_slot] = {
-        equipped: true,
-        ...equip.item_status,
-      };
-      target.equipment[equip.equip_slot] = equip;
-      equip.costUseTime(1);
+  /**
+   * 通用装备效果
+   * @param {Item} self 物品实例
+   * @param {Player} target 目标玩家
+   */
+  async GeneralOnEquip(self, target) {
+    // 使用新的物品管理器装备物品
+    await itemManager.equipItem(self, target);
+
+    // 更新UI
+    const ui = getUIInstance();
+    if (ui.currentScene.playerBag) {
+      ui.currentScene.playerBag.updateSelf(target);
     }
   },
-  GeneralOnUnwield(self, target) {
-    const equip = self;
-    if (
-      target.equipmentBonus[equip.equip_slot] &&
-      target.equipmentBonus[equip.equip_slot]["equipped"]
-    ) {
-      target.equipmentBonus[equip.equip_slot] = {
-        equipped: false,
-      };
-      target.equipment[equip.equip_slot] = null;
-      equip.addUseTime(1);
-    }
+
+  /**
+   * 通用卸下效果
+   * @param {Item} self 物品实例
+   * @param {Player} target 目标玩家
+   */
+  async GeneralOnUnwield(self, target) {
+    // 使用新的物品管理器卸下装备
+    await itemManager.unequipItem(self, target);
+
   },
-  GeneralOnUse(self, target) {
-    const item = self;
-    if(item.use_time <= 0) return;
-    item.costUseTime(1).addHook("after", async (self, game) => {
-      const ui = getUIInstance();
-      if (ui.currentScene.playerBag) {
-        ui.currentScene.playerBag.updateSelf(target);
-      }
-      game.createEvent(
+
+  /**
+   * 通用使用效果
+   * @param {Item} self 物品实例
+   * @param {Player} target 目标玩家
+   */
+  async GeneralOnUse(self, target) {
+    // 使用新的物品管理器使用物品
+    await itemManager.useItem(self, target);
+  },
+
+  /**
+   * 恢复生命值效果
+   * @param {Object} status 物品状态
+   * @param {Player} target 目标玩家
+   */
+  async HealHP(status, target) {
+    if (status.heal_hp) {
+      const game = getGameInstance();
+      await game.createEvent(
         game.eventWrapper(
-          "onUse",
+          "healHP",
+          { amount: status.heal_hp, target },
           {
-            status: item.item_status,
-            target: target,
-          },
-          {
-            during: async (self, game) => {
-              item.onUse(self.data.status, self.data.target);
+            during: async (self) => {
+              self.data.target.status.hp += self.data.amount;
+              if (self.data.target.status.hp > self.data.target.status.maxHp) {
+                self.data.target.status.hp = self.data.target.status.maxHp;
+              }
+            },
+            after: async (self) => {
+              const centerX = window.innerWidth / 2;
+              const centerY = window.innerHeight / 2;
+              Animations.showFloatingText(
+                `+${self.data.amount} HP`,
+                centerX,
+                centerY,
+                0x00ff00
+              );
             },
           }
         )
       );
-    });
+    }
+  },
+
+  /**
+   * 恢复魔法值效果
+   * @param {Object} status 物品状态
+   * @param {Player} target 目标玩家
+   */
+  async HealMP(status, target) {
+    if (status.heal_mp) {
+      const game = getGameInstance();
+      await game.createEvent(
+        game.eventWrapper(
+          "healMP",
+          { amount: status.heal_mp, target },
+          {
+            during: async (self) => {
+              self.data.target.status.mp += self.data.amount;
+              if (self.data.target.status.mp > self.data.target.status.maxMp) {
+                self.data.target.status.mp = self.data.target.status.maxMp;
+              }
+            },
+            after: async (self) => {
+              const centerX = window.innerWidth / 2;
+              const centerY = window.innerHeight / 2;
+              Animations.showFloatingText(
+                `+${self.data.amount} MP`,
+                centerX,
+                centerY,
+                0x0000ff
+              );
+            },
+          }
+        )
+      );
+    }
+  },
+
+  /**
+   * 临时增加属性效果
+   * @param {Object} status 物品状态
+   * @param {Player} target 目标玩家
+   */
+  async TemporaryStatBoost(status, target) {
+    if (status.temp_boost) {
+      const game = getGameInstance();
+      const boostDuration = status.boost_duration || 30; // 默认30秒
+
+      for (const [stat, value] of Object.entries(status.temp_boost)) {
+        if (target.status[stat] !== undefined) {
+          const originalValue = target.status[stat];
+
+          // 应用增益
+          target.status[stat] += value;
+
+          // 显示效果
+          const ui = getUIInstance();
+          Animations.showFloatingText(
+            `${stat} +${value}`,
+            target.x,
+            target.y - 20,
+            0xffff00
+          );
+
+          // 设置定时器恢复原值
+          setTimeout(() => {
+            target.status[stat] = originalValue;
+            Animations.showFloatingText(
+              `${stat} 效果结束`,
+              target.x,
+              target.y - 20,
+              0xffff00
+            );
+          }, boostDuration * 1000);
+        }
+      }
+    }
   },
 };
